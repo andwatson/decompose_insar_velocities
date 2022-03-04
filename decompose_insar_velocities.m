@@ -23,7 +23,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/zagros_gacos.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf';
 
 % add subdirectory paths
 addpath util
@@ -33,6 +33,28 @@ addpath util
 disp('Loading parameter file')
 
 [par,insarpar] = readparfile(config_file);
+
+%% check that inputs exist
+
+disp('Checking that data exists')
+
+to_remove = false(1,length(insarpar.dir));
+
+for ii = 1:length(insarpar.dir)
+    
+    % get name of velocity file
+    namestruct = dir([insarpar.dir{ii} '*' insarpar.id_vel '*']);
+    
+    % test existance, record if config file if missing
+    if isempty(namestruct)   
+        disp(['Removing ' insarpar.dir{ii}])
+        to_remove(ii) = true;        
+    end
+    
+end
+
+% remove missing file dirs
+insarpar.dir(to_remove) = [];
 
 %% load inputs
 
@@ -53,15 +75,15 @@ compE = cell(size(lon)); compN = cell(size(lon)); compU = cell(size(lon));
 for ii = 1:nframes
     
     disp(['Loading ' insarpar.dir{ii}])
-    
+
     % extract the frame name
     frames(ii) = regexp(insarpar.dir{ii},'\d*[AD]_\d*_\d*','match');
-        
+
     % load velocities
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_vel '*']);
     [lon{ii},lat{ii},vel{ii},dx{ii},dy{ii}] ...
         = read_geotiff([insarpar.dir{ii} namestruct.name]);
-    
+
     % test that vel contains valid pixels, and remove if not
     if sum(~isnan(vel{ii}),'all') == 0
         disp([insarpar.dir{ii} ' is all nans - removing'])
@@ -72,17 +94,17 @@ for ii = 1:nframes
     % load velocity errors
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_vstd '*']);
     [~,~,vstd{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name]);
-    
+
     % load East, North, and Up components
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_e '*']);
     [lon_comp{ii},lat_comp{ii},compE{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name]);
-    
+
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_n '*']);
     [~,~,compN{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name]);
-    
+
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_u '*']);
     [~,~,compU{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name]);
-    
+
     % load mask
     if par.usemask == 1
         namestruct = dir([insarpar.dir{ii} '*' insarpar.id_mask '*']);
@@ -257,7 +279,13 @@ if par.tie2gnss == 1
     gnss_resid_plane = zeros([size(xx_regrid) nframes]);
     
     for ii = 1:nframes
-
+        
+        % skip loop if vel is empty (likely because of masking)
+        if all(isnan(vel_regrid(:,:,ii)),'all')
+            disp([frames{ii} ' vel is empty after masking, skipping referencing'])
+            continue
+        end
+        
         % convert gnss fields to los
         gnss_los = (gnss_E.*compE_regrid(:,:,ii)) + (gnss_N.*compN_regrid(:,:,ii));
         
@@ -291,6 +319,12 @@ if par.tie2gnss == 1
         
     end
     
+end
+
+% calculate frame overlaps if requested
+if par.frame_overlaps == 1
+    disp('Calculating frame overlap statistics')
+    frame_overlap_stats(vel_regrid,frames,compU_regrid);
 end
 
 %% merge tracks
@@ -342,6 +376,13 @@ for jj = 1:size(xx_regrid,1)
         G(invalid_pixels,:) = [];
         Qd(invalid_pixels,:) = []; Qd(:,invalid_pixels) = [];
         
+        % apply cond(G) threshold
+        if par.condG_threshold > 0 && cond(G) > par.condG_threshold
+            disp('cond(G) threshold exceeded, skipping')
+%             m = nan(1,2); Qm = nan(2,2);
+            continue
+        end
+        
         if length(d) < 2 % skip if less than two frames
             continue
         end
@@ -350,6 +391,13 @@ for jj = 1:size(xx_regrid,1)
         W = inv(Qd);
         m = (G'*W*G)^-1 * G'*W*d;
         Qm = inv(G'*W*G);
+                
+        if par.var_threshold > 0 && any(diag(Qm) > par.var_threshold)
+            disp('var threshold exceeded, skipping')
+%             m = nan(1,2); Qm = nan(2,2);
+            continue
+        end
+        
         
         % save
         m_up(jj,kk) = m(1);
@@ -382,8 +430,7 @@ plt_data(x_regrid,y_regrid,m_east,lonlim,latlim,clim,'East (mm/yr)',fault_trace,
 colormap(t(2),vik)
 
 t(3) = nexttile; hold on
-plt_data(x_regrid,y_regrid,m_north,lonlim,latlim,clim,'North (mm/yr)',fault_trace,borders)
-colormap(t(3),vik)
+plt_data(x_regrid,y_regrid,m_north,lonlim,latlim,[],'North (mm/yr)',fault_trace,borders)
 
 t(4) = nexttile; hold on
 coverage = sum(~isnan(vel_regrid),3);

@@ -59,6 +59,15 @@ par.ds_method = getparval(cfgcell,'ds_method','mean',[]);
 % merge tracks
 par.merge_tracks = getparval(cfgcell,'merge_tracks',0);
 
+% threshold on cond(G) in inversion
+par.condG_threshold = getparval(cfgcell,'condG_threshold',0);
+
+% threshold on model variance in inversion
+par.var_threshold = getparval(cfgcell,'var_threshold',0);
+
+% calculate frame overlap statistics
+par.frame_overlaps = getparval(cfgcell,'frame_overlaps',0);
+
 %% plotting and output toggles
 
 % save geotiffs
