@@ -1,20 +1,21 @@
 function frame_overlap_stats(vel,frames,compU)
 %=================================================================
-% function [] = frame_overlap_stats()
+% function frame_overlap_stats(vel,frames,compU)
 %-----------------------------------------------------------------
-% Function to get parameter values from a configure file
+% Calculate the differences between overlapping frames both along-track and
+% across-track, for ascending and descending frames. Plots histograms of
+% the overlap differences for all frames, including a gaussian fit to
+% estimate the mean and standard deviation.
+%
+% Based on frame overlap work in Weiss et al. (2020).
 %                                                                  
 % INPUT:                                                           
-%   cfgfile: path to parameter text file (e.g. velmap.conf)
-% OUTPUT:                                                          
-%   par:  structure containing general parameters
+%   vel: matrix of regridded velocities
+%   frame: cell array of frame names
+%   compU: Up component vectors for each vel
 %   
-% Adapted from the velmap function of the same name.
-%
-% Andrew Watson     20-08-2021
+% Andrew Watson     04-03-2022
 %                                                                  
-% NOTE: use '%' for comments in config file, and ': ' to seperate names and
-% values (e.g. inv_e:   1)
 %=================================================================
 
 % remove nans from vels

@@ -56,8 +56,11 @@ par.usemask = getparval(cfgcell,'usemask',0);
 par.ds_factor = getparval(cfgcell,'ds_factor',0);
 par.ds_method = getparval(cfgcell,'ds_method','mean',[]);
 
-% merge tracks
-par.merge_tracks = getparval(cfgcell,'merge_tracks',0);
+% marge along-track
+par.merge_tracks_along = getparval(cfgcell,'merge_tracks_along',0);
+
+% merge across-track
+par.merge_tracks_across = getparval(cfgcell,'merge_tracks_across',0);
 
 % threshold on cond(G) in inversion
 par.condG_threshold = getparval(cfgcell,'condG_threshold',0);
@@ -78,6 +81,12 @@ par.plt_faults = getparval(cfgcell,'plt_faults',0);
 
 % plot borders
 par.plt_borders = getparval(cfgcell,'plt_borders',0);
+
+% plot input vels
+par.plt_input_vels = getparval(cfgcell,'plt_input_vels',0);
+
+% plot merged tracks
+par.plt_merge_tracks = getparval(cfgcell,'plt_merge_tracks',0);
 
 %% insar
 

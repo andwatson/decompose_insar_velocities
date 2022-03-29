@@ -23,10 +23,10 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/zagros_gacos.conf';
 
 % add subdirectory paths
-addpath util
+addpath util plotting
 
 %% read parameter file
 
@@ -113,6 +113,10 @@ for ii = 1:nframes
     
 end
 
+% get indices of ascending and descending frames
+asc_frames_ind = find(cellfun(@(x) strncmp('A',x(4),4), frames));
+desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
+
 % fault traces
 if par.plt_faults == 1
     fault_trace = readmatrix(par.faults_file);
@@ -128,6 +132,36 @@ if par.plt_borders == 1
     borders = load(par.borders_file);
 else
     borders = [];
+end
+
+% colour palette
+load('/nfs/a285/homes/eearw/gmt/colourmaps/vik/vik.mat')
+
+%% preview inputs
+
+if par.plt_input_vels == 1
+    
+    % set plotting parameters
+    lonlim = [min(cellfun(@min,lon)) max(cellfun(@max,lon))]; 
+    latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))]; 
+    clim = [-10 10];
+    
+    f = figure();
+    f.Position([1 3 4]) = [600 1600 600];
+    tiledlayout(1,2,'TileSpacing','compact')
+    
+    % plot ascending tracks
+    t(1) = nexttile; hold on
+    plt_data(lon(asc_frames_ind),lat(asc_frames_ind),vel(asc_frames_ind),...
+        lonlim,latlim,clim,'Ascending (mm/yr)',[],borders)
+    colormap(t(1),vik)
+    
+    % plot descending tracks
+    t(2) = nexttile; hold on
+    plt_data(lon(desc_frames_ind),lat(desc_frames_ind),vel(asc_frames_ind),...
+        lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
+    colormap(t(2),vik)
+    
 end
 
 %% downsample unit vectors if required
@@ -271,6 +305,27 @@ if par.usemask == 1
 
 end
 
+%% merge frames along-track (and across-track)
+
+if par.merge_tracks_along > 0
+    
+    disp('Merging frames along-track')
+    
+    [vel_regrid,compE_regrid,compN_regrid,compU_regrid,vstd_regrid,tracks] ...
+        = merge_frames_along_track(par,x_regrid,y_regrid,vel_regrid,...
+        frames,compE_regrid,compN_regrid,compU_regrid,vstd_regrid);
+    
+    nframes = size(vel_regrid,3);
+    
+    % run across-track merging
+    if par.merge_tracks_across > 0        
+        disp('Merging frame across-track. Not used in decomposition.')       
+        merge_frames_across_track(par,x_regrid,y_regrid,vel_regrid,tracks,...
+            compE_regrid,compU_regrid,vstd_regrid)
+    end
+    
+end
+
 %% tie to gnss
 
 if par.tie2gnss == 1
@@ -327,21 +382,6 @@ if par.frame_overlaps == 1
     frame_overlap_stats(vel_regrid,frames,compU_regrid);
 end
 
-%% merge tracks
-
-if par.merge_tracks == 1
-    
-    % merge frames along tracks by taking mean of overlaps
-    [vel_regrid,unique_tracks] = merge_tracks(frames,vel_regrid);
-    [vstd_regrid,~] = merge_tracks(frames,vstd_regrid);
-    [compE_regrid,~] = merge_tracks(frames,compE_regrid);
-    [compN_regrid,~] = merge_tracks(frames,compN_regrid);
-    [compU_regrid,~] = merge_tracks(frames,compU_regrid);
-    
-    nframes = length(unique_tracks);
-    
-end
-
 %% velocity decomposition
 
 disp('Inverting for E and U')
@@ -352,8 +392,14 @@ m_east = nan(size(xx_regrid));
 m_north = gnss_N;
 var_up = nan(size(xx_regrid));
 var_east = nan(size(xx_regrid));
+var_threshold_mask = zeros(size(xx_regrid));
+condG_threshold_mask = zeros(size(xx_regrid));
 
+% number of points in grid
 npixels = length(xx_regrid(:));
+
+% progress report interval
+report_it = round(size(xx_regrid,1)/10);
 
 % project gnss into los and remove
 for ii = 1:nframes
@@ -378,8 +424,8 @@ for jj = 1:size(xx_regrid,1)
         
         % apply cond(G) threshold
         if par.condG_threshold > 0 && cond(G) > par.condG_threshold
-            disp('cond(G) threshold exceeded, skipping')
-%             m = nan(1,2); Qm = nan(2,2);
+            condG_threshold_mask(jj,kk) = 1;
+            m = nan(1,2); Qm = nan(2,2);
             continue
         end
         
@@ -393,12 +439,11 @@ for jj = 1:size(xx_regrid,1)
         Qm = inv(G'*W*G);
                 
         if par.var_threshold > 0 && any(diag(Qm) > par.var_threshold)
-            disp('var threshold exceeded, skipping')
-%             m = nan(1,2); Qm = nan(2,2);
+            var_threshold_mask(jj,kk) = 1;
+            m = nan(1,2); Qm = nan(2,2);
             continue
         end
-        
-        
+               
         % save
         m_up(jj,kk) = m(1);
         m_east(jj,kk) = m(2);    
@@ -406,12 +451,22 @@ for jj = 1:size(xx_regrid,1)
         var_east(jj,kk) = Qm(2,2);
         
     end
-    disp([num2str(jj) '/' num2str(size(xx_regrid,1)) ' rows completed'])
+    
+    % report progress
+    if mod(jj,report_it) == 0
+        disp([num2str(jj) '/' num2str(size(xx_regrid,1)) ' rows completed'])
+    end
 end
 
-%% plot output velocities
+% report number of points removed.
+disp([num2str(sum(condG_threshold_mask,'all')) '/' num2str(npixels) ...
+    ' (' num2str(round(sum(condG_threshold_mask,'all')/npixels)) ...
+    ') points were masked by the cond(G) threshold.'])
+disp([num2str(sum(var_threshold_mask,'all')) '/' num2str(npixels) ...
+    ' (' num2str(round(sum(var_threshold_mask,'all')/npixels)) ...
+    ') points were masked by the model variance threshold.'])
 
-load('/nfs/a285/homes/eearw/gmt/colourmaps/vik/vik.mat')
+%% plot output velocities
 
 lonlim = [min(x_regrid) max(x_regrid)];
 latlim = [min(y_regrid) max(y_regrid)];
@@ -436,6 +491,22 @@ t(4) = nexttile; hold on
 coverage = sum(~isnan(vel_regrid),3);
 plt_data(x_regrid,y_regrid,coverage,lonlim,latlim,[],'Data coverage',fault_trace,borders)
 
+%% plot variance and cond(G) threshold masks if used
+
+if par.condG_threshold > 0 || par.var_threshold > 0
+    
+    f = figure();
+    f.Position([1 3 4]) = [600 1600 600];
+    tiledlayout(1,2,'TileSpacing','compact')
+    
+    t(1) = nexttile; hold on
+    plt_data(x_regrid,y_regrid,condG_threshold_mask,lonlim,latlim,[],'cond(G) mask',fault_trace,borders)
+    
+    t(2) = nexttile; hold on
+    plt_data(x_regrid,y_regrid,var_threshold_mask,lonlim,latlim,[],'variance mask',fault_trace,borders)
+    
+end
+
 %% save outputs
 
 if par.save_geotif == 1
@@ -450,31 +521,4 @@ if par.save_geotif == 1
     geotiffwrite([par.out_path par.out_prefix '_vE.geo.tif'],m_east,georef)
     geotiffwrite([par.out_path par.out_prefix '_vN.geo.tif'],m_north,georef)
     
-end
-
-%% plotting function ------------------------------------------------------
-function plt_data(lon,lat,data,lonlim,latlim,clim,titlestr,fault_trace,borders)
-
-% plot input data
-imagesc(lon,lat,data,'AlphaData',~isnan(data));
-
-% plot borders
-if ~isempty(borders)
-    for ii = 1:length(borders.places)
-        plot(borders.lon{ii},borders.lat{ii},'k')
-    end
-end
-
-% plot fault traces
-if ~isempty(fault_trace); plot(fault_trace(:,1),fault_trace(:,2),'r'); end
-
-xlim(lonlim)
-ylim(latlim)
-
-colorbar
-
-if ~isempty(clim); caxis(clim); end
-
-title(titlestr)
-
 end

@@ -1,20 +1,20 @@
 function [across_track_overlaps] = across_track_loop(combins,tracks,unique_tracks,vel)
 %=================================================================
-% function [] = frame_overlap_stats()
+% function [across_track_overlaps] = across_track_loop(combins,tracks,unique_tracks,vel)
 %-----------------------------------------------------------------
-% Function to get parameter values from a configure file
+% Calculate overlap differences between frames on different tracks. Used by
+% frame_overlap_stats.
 %                                                                  
 % INPUT:                                                           
-%   cfgfile: path to parameter text file (e.g. velmap.conf)
+%   combins: combinations of frames
+%   tracks: tracks for each frame (includes duplicates)
+%   unique_tracks: cell array of unique track names
+%   vel: matrix of regridded frame velocities
 % OUTPUT:                                                          
-%   par:  structure containing general parameters
-%   
-% Adapted from the velmap function of the same name.
+%   across_track_overlaps:  difference between overlapping frames
 %
-% Andrew Watson     20-08-2021
+% Andrew Watson     04-03-2022
 %                                                                  
-% NOTE: use '%' for comments in config file, and ': ' to seperate names and
-% values (e.g. inv_e:   1)
 %=================================================================
 
 % pre-allocate
