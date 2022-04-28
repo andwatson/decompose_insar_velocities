@@ -26,9 +26,15 @@ function merge_frames_across_track(par,x,y,vel,tracks,compE,compU,vstd)
 %% setup
 
 % desired inc and az
-av_inc = 40;
+av_inc = 39;
 av_az_asc = -10;
 av_az_desc = -170;
+
+%% deramp vels
+
+% for ii = 1:size(vel,3)
+%     vel(:,:,ii) = deramp(x,y,vel(:,:,ii),'poly22');
+% end
 
 %% get pass dir
 
@@ -206,7 +212,7 @@ los_av_desc = mean(vel(:,:,tracks_desc_ind),3,'omitnan');
 % set plotting parameters
 lonlim = [min(x) max(x)];
 latlim = [min(y) max(y)];
-clim = [-40 40];
+clim = [-10 10];
 load('/nfs/a285/homes/eearw/gmt/colourmaps/vik/vik.mat')
 
 % reload borders for ease
@@ -229,6 +235,80 @@ colormap(t(1),vik)
 t(2) = nexttile; hold on
 plt_data(x,y,los_av_desc,lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
 colormap(t(2),vik)
+
+%% attempt a simple decomposition with a shared reference area
+
+% new reference area
+ref_xmin = 52.1528; ref_xmax = 52.6978;
+ref_ymin = 31.1667; ref_ymax = 31.7523;
+
+% get indices
+[~,ref_xmin_ind] = min(abs(x-ref_xmin));
+[~,ref_xmax_ind] = min(abs(x-ref_xmax));
+[~,ref_ymin_ind] = min(abs(y-ref_ymin));
+[~,ref_ymax_ind] = min(abs(y-ref_ymax));
+
+% get value and shift
+los_av_asc = los_av_asc - mean(los_av_asc(ref_ymin_ind:ref_ymax_ind,ref_xmin_ind:ref_xmax_ind),'all','omitnan');
+los_av_desc = los_av_desc - mean(los_av_desc(ref_ymin_ind:ref_ymax_ind,ref_xmin_ind:ref_xmax_ind),'all','omitnan');
+
+% design matrix
+G = [sind(av_inc).*-cosd(av_az_asc) cosd(av_inc); sind(av_inc).*-cosd(av_az_desc) cosd(av_inc)];
+
+% pre-al
+m_east = nan(size(los_av_asc)); m_up = nan(size(los_av_asc)); 
+
+report_it = round(size(los_av_asc,1)/10);
+
+% loop through pixels and perform decomposition
+for jj = 1:size(los_av_asc,1)
+    for kk = 1:size(los_av_asc,2)
+        
+        % make components
+%         Qd = diag(squeeze(vstd_regrid(jj,kk,:)));
+        
+        d = [los_av_asc(jj,kk); los_av_desc(jj,kk)];
+        
+        if any(isnan(d)) == 1
+            continue
+        end
+      
+        % solve
+%         W = inv(Qd);
+%         m = (G'*W*G)^-1 * G'*W*d;
+        m = (G'*G)^-1 * G'*d;
+%         Qm = inv(G'*W*G);
+               
+        % save
+        m_east(jj,kk) = m(1);
+        m_up(jj,kk) = m(2);    
+%         var_up(jj,kk) = Qm(1,1);
+%         var_east(jj,kk) = Qm(2,2);
+        
+    end
+    
+    % report progress
+    if mod(jj,report_it) == 0
+        disp([num2str(jj) '/' num2str(size(los_av_asc,1)) ' rows completed'])
+    end
+end
+
+clim = [-10 10];
+
+f = figure();
+f.Position([1 3 4]) = [600 1600 600];
+tiledlayout(1,2,'TileSpacing','compact')
+
+% plot ascending tracks
+t(1) = nexttile; hold on
+plt_data(x,y,m_east,lonlim,latlim,clim,'East (mm/yr)',[],borders)
+colormap(t(1),vik)
+
+% plot descending tracks
+t(2) = nexttile; hold on
+plt_data(x,y,m_up,lonlim,latlim,clim,'Up (mm/yr)',[],borders)
+colormap(t(2),vik)
+
 
 end
 

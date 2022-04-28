@@ -24,7 +24,13 @@ function [track_vel,track_compE,track_compN,track_compU,track_vstd,unique_tracks
 %=================================================================
 
 % pause loop to display frames for each track before and after shift
-plt_before_after = 0;
+plt_before_after = 1;
+
+%% deramp vels
+
+% for ii = 1:size(vel,3)
+%     vel(:,:,ii) = deramp(x,y,vel(:,:,ii),'poly11');
+% end
 
 %% get unique tracks, split by pass direction
 

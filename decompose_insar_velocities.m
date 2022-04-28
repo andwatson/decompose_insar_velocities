@@ -23,7 +23,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/zagros_gacos.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf';
 
 % add subdirectory paths
 addpath util plotting
@@ -158,7 +158,7 @@ if par.plt_input_vels == 1
     
     % plot descending tracks
     t(2) = nexttile; hold on
-    plt_data(lon(desc_frames_ind),lat(desc_frames_ind),vel(asc_frames_ind),...
+    plt_data(lon(desc_frames_ind),lat(desc_frames_ind),vel(desc_frames_ind),...
         lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
     colormap(t(2),vik)
     
@@ -423,7 +423,7 @@ for jj = 1:size(xx_regrid,1)
         Qd(invalid_pixels,:) = []; Qd(:,invalid_pixels) = [];
         
         % apply cond(G) threshold
-        if par.condG_threshold > 0 && cond(G) > par.condG_threshold
+        if par.condG_threshold > 0 && cond(G) < par.condG_threshold
             condG_threshold_mask(jj,kk) = 1;
             m = nan(1,2); Qm = nan(2,2);
             continue
@@ -460,11 +460,11 @@ end
 
 % report number of points removed.
 disp([num2str(sum(condG_threshold_mask,'all')) '/' num2str(npixels) ...
-    ' (' num2str(round(sum(condG_threshold_mask,'all')/npixels)) ...
-    ') points were masked by the cond(G) threshold.'])
+    ' (' num2str(round(sum(condG_threshold_mask,'all')/npixels*100),2) ...
+    '%) points were masked by the cond(G) threshold.'])
 disp([num2str(sum(var_threshold_mask,'all')) '/' num2str(npixels) ...
-    ' (' num2str(round(sum(var_threshold_mask,'all')/npixels)) ...
-    ') points were masked by the model variance threshold.'])
+    ' (' num2str(round(sum(var_threshold_mask,'all')/npixels*100),2) ...
+    '%) points were masked by the model variance threshold.'])
 
 %% plot output velocities
 
