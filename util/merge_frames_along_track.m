@@ -24,7 +24,7 @@ function [track_vel,track_compE,track_compN,track_compU,track_vstd,unique_tracks
 %=================================================================
 
 % pause loop to display frames for each track before and after shift
-plt_before_after = 1;
+plt_before_after = 0;
 
 %% deramp vels
 

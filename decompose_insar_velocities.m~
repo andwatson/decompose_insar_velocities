@@ -391,11 +391,12 @@ if par.frame_overlaps == 1
     frame_overlap_stats(vel_regrid,frames,compU_regrid);
 end
 
-%% identify pixels without both asc and desc coverage
+%% mask pixels without both asc and desc coverage
 
 asc_coverage = any(~isnan(vel_regrid(:,:,asc_frames_ind)),3);
 desc_coverage = any(~isnan(vel_regrid(:,:,desc_frames_ind)),3);
 both_coverage = all(cat(3,asc_coverage,desc_coverage),3);
+% vel_regrid(repmat(~both_coverage,1,1,nframes)) = nan;
 
 %% velocity decomposition
 
@@ -426,10 +427,7 @@ end
 for jj = 1:size(xx_regrid,1)
     for kk = 1:size(xx_regrid,2)
         
-        % skip points without coverage in both look directions
-        if both_coverage(jj,kk) == 0
-            continue
-        end
+        if 
         
         % make components
         Qd = diag(squeeze(vstd_regrid(jj,kk,:)));
@@ -442,6 +440,11 @@ for jj = 1:size(xx_regrid,1)
         G(invalid_pixels,:) = [];
         Qd(invalid_pixels,:) = []; Qd(:,invalid_pixels) = [];
         
+        % skip if less than two frames
+        if length(d) < 2 
+            continue
+        end
+        
         % apply cond(G) threshold
         if par.condG_threshold > 0 && cond(G) > par.condG_threshold
             condG_threshold_mask(jj,kk) = 1;
@@ -453,8 +456,7 @@ for jj = 1:size(xx_regrid,1)
         W = inv(Qd);
         m = (G'*W*G)^-1 * G'*W*d;
         Qm = inv(G'*W*G);
-        
-        % apply model variance threshold
+                
         if par.var_threshold > 0 && any(diag(Qm) > par.var_threshold)
             var_threshold_mask(jj,kk) = 1;
             m = nan(1,2); Qm = nan(2,2);
