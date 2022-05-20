@@ -391,12 +391,11 @@ if par.frame_overlaps == 1
     frame_overlap_stats(vel_regrid,frames,compU_regrid);
 end
 
-%% mask pixels without both asc and desc coverage
+%% identify pixels without both asc and desc coverage
 
 asc_coverage = any(~isnan(vel_regrid(:,:,asc_frames_ind)),3);
 desc_coverage = any(~isnan(vel_regrid(:,:,desc_frames_ind)),3);
 both_coverage = all(cat(3,asc_coverage,desc_coverage),3);
-% vel_regrid(repmat(~both_coverage,1,1,nframes)) = nan;
 
 %% velocity decomposition
 
@@ -423,56 +422,67 @@ for ii = 1:nframes
     vel_regrid(:,:,ii) = vel_regrid(:,:,ii) - gnss_Nlos;
 end   
 
+% reshape array for optimal looping (each pixel becomes a row of a 2D array
+% to avoid squeeze within loop).
+vel_regrid = reshape(vel_regrid,[],nframes);
+vstd_regrid = reshape(vstd_regrid,[],nframes);
+compU_regrid = reshape(compU_regrid,[],nframes);
+compE_regrid = reshape(compE_regrid,[],nframes);
+
+% create loop indexes
+[jj,kk] = meshgrid(1:size(xx_regrid,1),1:size(xx_regrid,2));
+jj = jj(:); kk = kk(:);
+
 % loop through pixels
-for jj = 1:size(xx_regrid,1)
-    for kk = 1:size(xx_regrid,2)
+for ii = 1:size(vel_regrid,1)
         
-        if 
-        
-        % make components
-        Qd = diag(squeeze(vstd_regrid(jj,kk,:)));
-        G = [squeeze(compU_regrid(jj,kk,:)) squeeze(compE_regrid(jj,kk,:))];
-        d = squeeze(vel_regrid(jj,kk,:));
-        
-        % remove invalid pixels
-        invalid_pixels = find(isnan(d));
-        d(invalid_pixels) = [];
-        G(invalid_pixels,:) = [];
-        Qd(invalid_pixels,:) = []; Qd(:,invalid_pixels) = [];
-        
-        % skip if less than two frames
-        if length(d) < 2 
-            continue
-        end
-        
-        % apply cond(G) threshold
-        if par.condG_threshold > 0 && cond(G) > par.condG_threshold
-            condG_threshold_mask(jj,kk) = 1;
-            m = nan(1,2); Qm = nan(2,2);
-            continue
-        end
-        
-        % solve
-        W = inv(Qd);
-        m = (G'*W*G)^-1 * G'*W*d;
-        Qm = inv(G'*W*G);
-                
-        if par.var_threshold > 0 && any(diag(Qm) > par.var_threshold)
-            var_threshold_mask(jj,kk) = 1;
-            m = nan(1,2); Qm = nan(2,2);
-            continue
-        end
-               
-        % save
-        m_up(jj,kk) = m(1);
-        m_east(jj,kk) = m(2);    
-        var_up(jj,kk) = Qm(1,1);
-        var_east(jj,kk) = Qm(2,2);
-        
+    % skip points without coverage in both look directions
+    if both_coverage(jj(ii),kk(ii)) == 0
+        continue
     end
+
+    % make components
+    Qd = diag(vstd_regrid(ii,:));
+    G = [compU_regrid(ii,:)' compE_regrid(ii,:)'];
+    d = vel_regrid(ii,:);
     
+%     Qd = diag(squeeze(vstd_regrid(jj,kk,:)));
+%     G = [squeeze(compU_regrid(jj,kk,:)) squeeze(compE_regrid(jj,kk,:))];
+%     d = squeeze(vel_regrid(jj,kk,:));
+
+    % remove invalid pixels
+    invalid_pixels = find(isnan(d));
+    d(invalid_pixels) = [];
+    G(invalid_pixels,:) = [];
+    Qd(invalid_pixels,:) = []; Qd(:,invalid_pixels) = [];
+
+    % apply cond(G) threshold
+    if par.condG_threshold > 0 && cond(G) > par.condG_threshold
+        condG_threshold_mask(jj(ii),kk(ii)) = 1;
+        m = nan(1,2); Qm = nan(2,2);
+        continue
+    end
+
+    % solve
+    W = inv(Qd);
+    m = (G'*W*G)^-1 * G'*W*d;
+    Qm = inv(G'*W*G);
+
+    % apply model variance threshold
+    if par.var_threshold > 0 && any(diag(Qm) > par.var_threshold)
+        var_threshold_mask(jj(ii),kk(ii)) = 1;
+        m = nan(1,2); Qm = nan(2,2);
+        continue
+    end
+
+    % save
+    m_up(jj(ii),kk(ii)) = m(1);
+    m_east(jj(ii),kk(ii)) = m(2);    
+    var_up(jj(ii),kk(ii)) = Qm(1,1);
+    var_east(jj(ii),kk(ii)) = Qm(2,2);
+            
     % report progress
-    if mod(jj,report_it) == 0
+    if mod(ii,report_it) == 0
         disp([num2str(jj) '/' num2str(size(xx_regrid,1)) ' rows completed'])
     end
 end
@@ -484,6 +494,9 @@ disp([num2str(sum(condG_threshold_mask,'all')) '/' num2str(npixels) ...
 disp([num2str(sum(var_threshold_mask,'all')) '/' num2str(npixels) ...
     ' (' num2str(round(sum(var_threshold_mask,'all')/npixels*100),2) ...
     '%) points were masked by the model variance threshold.'])
+
+% reshape back to 3D arrays
+vel_regrid = reshape(vel_regrid,size(
 
 %% plot output velocities
 
