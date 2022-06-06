@@ -1,6 +1,6 @@
 function [data_deramp] = deramp(x,y,data,method)
 %=================================================================
-% function merge_frames_along_track()
+% function deramp(x,y,data,method)
 %-----------------------------------------------------------------
 % Fit a given polynomal to the input data and remove.
 %                                                                  

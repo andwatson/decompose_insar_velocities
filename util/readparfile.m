@@ -58,6 +58,7 @@ par.ds_method = getparval(cfgcell,'ds_method','mean',[]);
 
 % marge along-track
 par.merge_tracks_along = getparval(cfgcell,'merge_tracks_along',0);
+par.merge_tracks_along_func = getparval(cfgcell,'merge_tracks_along_func',0);
 
 % merge across-track
 par.merge_tracks_across = getparval(cfgcell,'merge_tracks_across',0);

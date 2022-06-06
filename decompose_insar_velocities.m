@@ -23,7 +23,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf'; % test_20220520
 
 % add subdirectory paths
 addpath util plotting
@@ -232,7 +232,7 @@ for ii = 1:nframes
     if (mod(ii,round(nframes./10))) == 0
         disp([num2str(round((ii./nframes)*100)) '% completed']);
     end
-
+    
 end
 
 if par.tie2gnss == 1
@@ -324,7 +324,12 @@ if par.merge_tracks_along > 0
         = merge_frames_along_track(par,x_regrid,y_regrid,vel_regrid,...
         frames,compE_regrid,compN_regrid,compU_regrid,vstd_regrid);
     
-    nframes = size(vel_regrid,3);
+    % update number of frames and indexes if frames have been merged
+    if par.merge_tracks_along == 2
+        nframes = size(vel_regrid,3);
+        asc_frames_ind = find(cellfun(@(x) strncmp('A',x(4),4), tracks));
+        desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), tracks));
+    end
     
     % run across-track merging
     if par.merge_tracks_across > 0        

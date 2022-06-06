@@ -34,6 +34,10 @@ plt_before_after = 0;
 
 %% get unique tracks, split by pass direction
 
+% get indices of ascending and descending frames (for if not merging)
+asc_frames_ind = find(cellfun(@(x) strncmp('A',x(4),4), frames));
+desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
+
 % get tracks from frame ids, removing duplicates
 tracks = cellfun(@(x) x(1:4), frames, 'UniformOutput', false);
 unique_tracks = unique(tracks);
@@ -73,8 +77,8 @@ for ii = 1:length(unique_tracks)
     % get inds for frames on that track
     track_ind = find(cellfun(@(x) strncmp(unique_tracks{ii},x,length(unique_tracks{ii})), tracks));
         
-    switch par.merge_tracks_along
-        case 1 % static offset
+    switch par.merge_tracks_along_func
+        case 0 % static offset
             
             % loop through adjcent pairings along-track
             for jj = 1:length(track_ind)-1
@@ -98,7 +102,7 @@ for ii = 1:length(unique_tracks)
             end
             
             
-        case 2 % 1st order plane
+        case 1 % 1st order plane
             
             % loop through adjcent pairings along-track
             for jj = 1:length(track_ind)-1
@@ -124,16 +128,19 @@ for ii = 1:length(unique_tracks)
             
     end
     
-    % take mean of overlap and store new vel
-    track_vel(:,:,ii) = mean(vel(:,:,track_ind),3,'omitnan');
-    
-    % merge component vectors
-    track_compE(:,:,ii) = mean(compE(:,:,track_ind),3,'omitnan');
-    track_compN(:,:,ii) = mean(compN(:,:,track_ind),3,'omitnan');
-    track_compU(:,:,ii) = mean(compU(:,:,track_ind),3,'omitnan');
-    
-    % merge pixel uncertainties
-    track_vstd(:,:,ii) = mean(vstd(:,:,track_ind),3,'omitnan');
+
+    if par.merge_tracks_along == 2
+        % take mean of overlap and store new vel
+        track_vel(:,:,ii) = mean(vel(:,:,track_ind),3,'omitnan');
+
+        % merge component vectors
+        track_compE(:,:,ii) = mean(compE(:,:,track_ind),3,'omitnan');
+        track_compN(:,:,ii) = mean(compN(:,:,track_ind),3,'omitnan');
+        track_compU(:,:,ii) = mean(compU(:,:,track_ind),3,'omitnan');
+
+        % merge pixel uncertainties
+        track_vstd(:,:,ii) = mean(vstd(:,:,track_ind),3,'omitnan');
+    end
     
     
     if plt_before_after == 1
@@ -171,6 +178,28 @@ for ii = 1:length(unique_tracks)
     
 end
 
+% if not merging overlaps, then duplicate variables for output
+if par.merge_tracks_along == 1
+    track_vel = vel; track_vstd = vstd;
+    track_compE = compE; track_compN = compN; track_compU = compU;
+    unique_tracks_asc_ind = asc_frames_ind; unique_tracks_desc_ind = desc_frames_ind;
+end
+
+%% deramp
+
+% y_deramp = 1:size(track_vel,1); x_deramp = 1:size(track_vel,2);
+for ii = 1:size(track_vel,3)
+    % deramp with polynomial that can vary in either direction
+%     track_vel(:,:,ii) = deramp(x_deramp,y_deramp,track_vel(:,:,ii));
+    
+    % deramp with fixed heading angle
+    if ismember(ii,unique_tracks_asc_ind)
+        theta = 13;
+    else
+        theta = -13;
+    end
+    track_vel(:,:,ii) = deramp_fixed_heading(x,y,track_vel(:,:,ii),theta);
+end
 
 %% plot merged tracks
 
@@ -206,31 +235,4 @@ if par.plt_merge_tracks == 1
 end
 
 end
-
-
-% % fit plane
-% if ref_surface == 1 % (c x y)
-%     G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy];
-%     m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
-%     gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy;
-% 
-% elseif ref_surface == 2 % (c x y xy x^2 y^2)
-%     G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy gnss_xx.*gnss_yy ...
-%         gnss_xx.^2 gnss_yy.^2];
-%     m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
-%     gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy ...
-%         + m_resid(4).*all_xx.*all_yy + m_resid(5).*all_xx.^2 + m_resid(6).*all_yy.^2;
-
-
-%     % get combinations of frames
-%     pairings = nchoosek(track_ind,2);
-%     overlap_ind = zeros(length(track_ind)-1,2);
-%     
-%     % find overlaps by testing every combination for non-nan values
-%     n = 1;
-%     for kk = 1:size(pairings,1)
-%         if any(~isnan(vel(:,:,pairings(kk,1)) - vel(:,:,pairings(kk,2))),'all')
-%             overlap_ind(n,:) = pairings(kk,:);
-%             n = n + 1;
-%         end
-%     end    
+ 
