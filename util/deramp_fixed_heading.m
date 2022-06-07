@@ -17,7 +17,7 @@ function [data_deramp] = deramp_fixed_heading(x,y,data,theta)
 %================================================================
 
 % plot toggle
-plt = 1;
+plt = 0;
 
 % duplicate (partially for plotting)
 data_orig = data;

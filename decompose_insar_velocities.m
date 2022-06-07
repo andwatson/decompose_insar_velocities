@@ -23,7 +23,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf'; % test_20220520
+config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf'; % test_20220520, iran_gacos
 
 % add subdirectory paths
 addpath util plotting
@@ -235,7 +235,7 @@ for ii = 1:nframes
     
 end
 
-if par.tie2gnss == 1
+if par.tie2gnss ~= 0
     [xx_gnss,yy_gnss] = meshgrid(gnss_field.x,gnss_field.y);
     gnss_E = interp2(xx_gnss,yy_gnss,gnss_field.E,xx_regrid,yy_regrid);
     gnss_N = interp2(xx_gnss,yy_gnss,gnss_field.N,xx_regrid,yy_regrid);
@@ -288,7 +288,7 @@ if par.ds_factor > 0
     compU_regrid = compU_regrid_ds; mask_regrid = mask_regrid_ds;
     clear vel_regrid_ds vstd_regrid_ds inc_regrid_ds phi_regrid_ds mask_regrid_ds
     
-    if par.tie2gnss == 1
+    if par.tie2gnss ~= 0
         [gnss_E,~,~] = downsample_array(gnss_E,par.ds_factor,par.ds_factor,par.ds_method);
         [gnss_N,~,~] = downsample_array(gnss_N,par.ds_factor,par.ds_factor,par.ds_method);
     end
@@ -341,53 +341,11 @@ if par.merge_tracks_along > 0
 end
 
 %% tie to gnss
+% Shift InSAR velocities into the same reference frame as the GNSS
+% velocities. Method is given by par.tie2gnss. 
 
-if par.tie2gnss == 1
-    
-    % pre-allocate
-    gnss_resid_plane = zeros([size(xx_regrid) nframes]);
-    
-    for ii = 1:nframes
-        
-        % skip loop if vel is empty (likely because of masking)
-        if all(isnan(vel_regrid(:,:,ii)),'all')
-            disp([frames{ii} ' vel is empty after masking, skipping referencing'])
-            continue
-        end
-        
-        % convert gnss fields to los
-        gnss_los = (gnss_E.*compE_regrid(:,:,ii)) + (gnss_N.*compN_regrid(:,:,ii));
-        
-        % calculate residual
-        vel_tmp = vel_regrid(:,:,ii); 
-        vel_tmp(vel_tmp>mean(vel_tmp(:),'omitnan')+std(vel_tmp(:),'omitnan')) = nan;
-        vel_tmp(vel_tmp<mean(vel_tmp(:),'omitnan')-std(vel_tmp(:),'omitnan')) = nan;
-        
-        gnss_resid = vel_tmp - gnss_los;
-        
-        % remove nans
-        gnss_xx = xx_regrid(~isnan(gnss_resid));
-        gnss_yy = yy_regrid(~isnan(gnss_resid));
-        gnss_resid = gnss_resid(~isnan(gnss_resid));
-        
-        % centre coords
-        midx = (max(gnss_xx) + min(gnss_xx))/2;
-        midy = (max(gnss_yy) + min(gnss_yy))/2;
-        gnss_xx = gnss_xx - midx ;gnss_yy = gnss_yy - midy;
-        all_xx = xx_regrid - midx; all_yy = yy_regrid - midy;
-          
-        % fit plane
-        G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy gnss_xx.*gnss_yy ...
-            gnss_xx.^2 gnss_yy.^2];
-        m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
-        gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy ...
-            + m_resid(4).*all_xx.*all_yy + m_resid(5).*all_xx.^2 + m_resid(6).*all_yy.^2;
-            
-        % remove from insar
-        vel_regrid(:,:,ii) = vel_regrid(:,:,ii) - gnss_resid_plane(:,:,ii);
-        
-    end
-    
+if par.tie2gnss ~= 0
+    [vel_regrid] = ref_to_gnss(par.tie2gnss,xx_regrid,yy_regrid,vel_regrid,compE_regrid,compN_regrid,gnss_E,gnss_N,frames);    
 end
 
 % calculate frame overlaps if requested
