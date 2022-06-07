@@ -24,13 +24,10 @@ gnss_field.E = east;
 %% optionally load uncertainties
 
 if nargin == 5
-    
     [~,~,sN] = grdread2(error_north);
     [~,~,sE] = grdread2(error_east);
-    
     gnss_field.sN = sN;
-    gnss_field.sE = sE;
-    
+    gnss_field.sE = s
 end
 
 %% output

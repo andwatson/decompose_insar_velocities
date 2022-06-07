@@ -64,7 +64,7 @@ for ii = 1:nframes
         case 2 % filtering
             
             % filter gnss residual
-            gnss_resid_filtered = ndnanfilter(gnss_resid,'rectwin',[81 81]);
+            gnss_resid_filtered = ndnanfilter(gnss_resid,'rectwin',[121 121]);
             
             % reapply nans
 %             gnss_resid_filtered(isnan(gnss_resid)) = nan;
