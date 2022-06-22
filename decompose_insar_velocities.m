@@ -26,7 +26,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf'; % test_20220520, iran_gacos
+config_file = '/scratch/eearw/decomp_frame_vels/conf/makran_gacos.conf'; % test_20220520, iran_gacos
 
 % add subdirectory paths
 addpath util plotting
@@ -375,6 +375,9 @@ disp('Inverting for E and U')
 [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
     = vel_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
     compU_regrid,gnss_N,gnss_sN,both_coverage);
+
+% [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
+%     = null_line_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,compU_regrid,both_coverage,asc_frames_ind,desc_frames_ind);
 
 %% plot output velocities
 

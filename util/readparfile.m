@@ -63,6 +63,9 @@ par.merge_tracks_along_func = getparval(cfgcell,'merge_tracks_along_func',0);
 % merge across-track
 par.merge_tracks_across = getparval(cfgcell,'merge_tracks_across',0);
 
+% decomposition method
+par.decomp_method = getparval(cfgcell,'decomp_method',0);
+
 % threshold on cond(G) in inversion
 par.condG_threshold = getparval(cfgcell,'condG_threshold',0);
 

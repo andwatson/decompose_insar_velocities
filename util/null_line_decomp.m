@@ -1,20 +1,19 @@
-function [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
-    = vel_decomp(par,vel,vstd,compE,compN,compU,gnss_N,gnss_sN,both_coverage)
+function [m_perp1,m_perp2,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
+    = null_line_decomp(par,vel,vstd,compE,compN,compU,both_coverage,asc_frames_ind,desc_frames_ind)
 %=================================================================
-% function vel_decomp()
+% function null_line_decomp()
 %-----------------------------------------------------------------
-% Decompose InSAR LOS velocities into East and Vertical components.
+% Decompose InSAR LOS velocities into the two vectors orthogonal to the
+% null line.
 %                                                                  
 % INPUT:                                                           
 %   par: 
 % OUTPUT:    
 %   track_vel: 
 %   
-% Andrew Watson     07-06-2022
+% Andrew Watson     13-06-2022
 %                                                                  
 %=================================================================
-
-method = 0;
 
 %% setup
 
@@ -23,8 +22,8 @@ rowcol = size(vel,[1 2]);
 nframes = size(vel,3);
 
 % pre-al
-m_up = nan(rowcol);
-m_east = nan(rowcol);
+m_perp1 = nan(rowcol);
+m_perp2 = nan(rowcol);
 var_up = nan(rowcol);
 var_east = nan(rowcol);
 var_threshold_mask = zeros(rowcol);
@@ -33,16 +32,20 @@ condG_threshold_mask = zeros(rowcol);
 % number of points in grid
 npixels = numel(vel(:,:,1));
 
-% project gnss into los and remove
-if method == 0
-    for ii = 1:nframes
-        gnss_Nlos = gnss_N .* compN(:,:,ii);
-        vel(:,:,ii) = vel(:,:,ii) - gnss_Nlos;
+%% find null line and perp vectors
+% assume a single null line for the entire area
 
-        % propagate error on N
-        vstd(:,:,ii) = sqrt(vstd(:,:,ii).^2 + gnss_sN.^2);
-    end   
-end
+% average of components for asc and desc
+comp_asc = [mean(compE(:,:,asc_frames_ind),'all','omitnan')
+    mean(compN(:,:,asc_frames_ind),'all','omitnan')
+    mean(compU(:,:,asc_frames_ind),'all','omitnan')];
+
+comp_desc = [mean(compE(:,:,desc_frames_ind),'all','omitnan')
+    mean(compN(:,:,desc_frames_ind),'all','omitnan')
+    mean(compU(:,:,desc_frames_ind),'all','omitnan')];
+
+% components of perpendicular vectors to null line
+[comp_perp1,comp_perp2] = null_line(comp_asc,comp_desc);
 
 %% decompose pixel by pixel
 
@@ -57,10 +60,8 @@ vstd = reshape(vstd,[],nframes);
 compU = reshape(compU,[],nframes);
 compE = reshape(compE,[],nframes);
 compN = reshape(compN,[],nframes);
-if method == 1
-    gnss_N = gnss_N(:);
-    gnss_sN = gnss_sN(:);
-end
+comp_perp1 = comp_perp1(:);
+comp_perp2 = comp_perp2(:);
 
 % progress report interval
 report_it = round(size(vel,1)/10);
@@ -80,46 +81,41 @@ for ii = 1:size(vel,1)
     end
 
     % make components
-    if method == 0
-        Qd = diag(vstd(ii,:));
-        G = [compU(ii,:)' compE(ii,:)'];
-        d = vel(ii,:)';
-    else
-        Qd = diag([vstd(ii,:) gnss_sN(ii)]);
-        G = [[compU(ii,:)' compE(ii,:)' compN(ii,:)']; [0 0 1]];
-        d = [vel(ii,:)'; gnss_N(ii)];
-    end
+%     Qd = diag(vstd(ii,:));
+    G = [compE(ii,:)' compN(ii,:)' compU(ii,:)'];
+    d = vel(ii,:)';
 
     % remove invalid pixels
     invalid_pixels = find(isnan(d));
     d(invalid_pixels) = [];
     G(invalid_pixels,:) = [];
-    Qd(invalid_pixels,:) = []; Qd(:,invalid_pixels) = [];
+%     Qd(invalid_pixels,:) = []; Qd(:,invalid_pixels) = [];
 
-    % apply cond(G) threshold
-    if par.condG_threshold > 0 && cond(G) > par.condG_threshold
-        condG_threshold_mask(jj(ii),kk(ii)) = 1;
-        m = nan(1,2); Qm = nan(2,2);
-        continue
+    % convert to null line perps
+    G_perp = zeros(size(G,1),2);
+    for mm = 1:size(G,1)
+        G_perp(mm,1) = dot(G(mm,:)',comp_perp1);
+        G_perp(mm,2) = dot(G(mm,:)',comp_perp2);
     end
 
     % solve
-    W = inv(Qd);
-    m = (G'*W*G)^-1 * G'*W*d;
-    Qm = inv(G'*W*G);
+%     W = inv(Qd);
+%     m = (G'*W*G)^-1 * G'*W*d;
+    m = G_perp\d;
+%     Qm = inv(G'*W*G);
 
-    % apply model variance threshold
-    if par.var_threshold > 0 && any(diag(Qm) > par.var_threshold)
-        var_threshold_mask(jj(ii),kk(ii)) = 1;
-        m = nan(1,2); Qm = nan(2,2);
-        continue
-    end
+%     % apply model variance threshold
+%     if par.var_threshold > 0 && any(diag(Qm) > par.var_threshold)
+%         var_threshold_mask(jj(ii),kk(ii)) = 1;
+%         m = nan(1,2); Qm = nan(2,2);
+%         continue
+%     end
 
     % save
-    m_up(jj(ii),kk(ii)) = m(1);
-    m_east(jj(ii),kk(ii)) = m(2);    
-    var_up(jj(ii),kk(ii)) = Qm(1,1);
-    var_east(jj(ii),kk(ii)) = Qm(2,2);
+    m_perp1(jj(ii),kk(ii)) = m(1);
+    m_perp2(jj(ii),kk(ii)) = m(2);    
+%     var_up(jj(ii),kk(ii)) = Qm(1,1);
+%     var_east(jj(ii),kk(ii)) = Qm(2,2);
     
 end
 
