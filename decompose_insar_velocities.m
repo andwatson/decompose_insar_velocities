@@ -26,7 +26,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/makran_gacos.conf'; % test_20220520, iran_gacos
+config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf'; % test_20220520, iran_gacos
 
 % add subdirectory paths
 addpath util plotting
@@ -346,6 +346,14 @@ if par.merge_tracks_along > 0
             compE_regrid,compU_regrid,vstd_regrid)
     end
     
+end
+
+%% reference frame bias correction
+% remove "reference frame bias" caused by rigid plate motions.
+
+if par.plate_motion == 1
+    [vel_regrid] = plate_motion_bias(par,x_regrid,y_regrid,vel_regrid,...
+        compE_regrid,compN_regrid);
 end
 
 %% tie to gnss

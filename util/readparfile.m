@@ -63,6 +63,10 @@ par.merge_tracks_along_func = getparval(cfgcell,'merge_tracks_along_func',0);
 % merge across-track
 par.merge_tracks_across = getparval(cfgcell,'merge_tracks_across',0);
 
+% reference frame bias
+par.plate_motion = getparval(cfgcell,'plate_motion',0);
+par.plate_motion_file = getparval(cfgcell,'plate_motion_file',[]);
+
 % decomposition method
 par.decomp_method = getparval(cfgcell,'decomp_method',0);
 
