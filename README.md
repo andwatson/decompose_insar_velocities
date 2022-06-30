@@ -31,10 +31,92 @@ This can improve the computational requirements of later steps (useful for testi
 Using pre-masked velocities can lead to smearing or shrinking of the masked area if additional downsapling is performed within DIV.
 Hence, we recommend providing unmasked velocities and a matching mask file, which is then optionally applied after both regridding and downsampling.
 
-### merge_along_track
+### merge_tracks_along
 Merge overlapping frames within each track.
 This requires that the frame directories have been given in order for each track.
 Options are:
  - 0 - disables.
  - 1 - apply the shift to each frame, but leave the frames seperate (i.e. don't take the mean to fully merge them).
  - 2 - take the mean of overlapping points, combining multiple frames into a single array.
+
+### merge_tracks_along_func
+Function used to perform the track merging. This is what is fit to the overlapping pixels and then removed to perform the "merge".
+ - 0 - scalar offset
+ - 1 - first order polynomial plane (c, x, y)
+
+### merge_tracks_across
+Merge adjacent tracks into a continuous velocity field.
+This is an experimental method which is useful for comparing velocities with and without GNSS referencing.
+The LOS velocities for each track are projected into a fixed average LOS, and then the difference is minimised with a static offset.
+Finally, we take the mean of the overlap.
+Options are:
+ - 0 - disables
+ - 1 - enables
+
+### plate_motion
+Apply a correction for the "reference frame bias" caused by absolute rigid plate motions in an ITRF reference frame.
+The "relative" LOS velocities produce by e.g. LiCSBAS are technically in the reference frame of the satellite orbit, which is ITRF.
+This means that any rigid translation of a plate (i.e. not the deformation that we want to measure) will be captured.
+While this velocity tends to be nearly constant across the area of a frame, the varying LOS makes it appear as a ramp in the range direction.
+For more details see "https://www.essoar.org/doi/10.1002/essoar.10511538.1".
+We can mitigate this bias by taking rigid no-net-rotation plate velocities in ITRF (see the UNAVCO plate motion calculator) and projecting them into LOS.
+Options are:
+ - 0 - disables
+ - 1 - enables
+
+### condG_threshold
+This is a threshold on the value of cond(G), where G is the design matrix for the velocity decomposition.
+As long as the decomposition is ran for pixels with at least one ascending and descending frame (which is currently forced), then a poorly conditioned G is unlikely to be a problem.
+Options are:
+ - 0 - disables
+ - ~0 - enables with that value
+
+### var_threshold
+Threshold on the model variance (see Qm), that removes pixels for which either the East or Vertical variances are above the given value.
+Useful for removing particularly noisy pixels.
+Options are:
+ - 0 - disables
+ - ~0 - enables with that value
+
+### frame_overlaps
+Calculate histograms of the differences between overlapping frames, both along and across track.
+For across-track frames, we project the velocities into a shared LOS.
+This is a useful test for quantifying the effectiveness of both the along-track merge and the GNSS referencing.
+Options are:
+ - 0 - disables
+ - 1 - enables
+
+### save_geotif
+Write the decomposed East, Vertical, and North velocities to geotifs, using the same projection as the inputs.
+Options are:
+ - 0 - disables
+ - 1 - enables
+
+### plt_faults
+Plot fault traces on the decomposed velocity maps.
+Options are:
+ - 0 - disables
+ - 1 - enables
+
+### plt_borders
+Plot country borders on the decomposed velocity maps.
+Options are:
+ - 0 - disables
+ - 1 - enables
+
+### plt_input_vels
+Plot the input vels as a mosaic of all frames. Useful for checking that the vels have loaded in correctly.
+Options are:
+ - 0 - disables
+ - 1 - enables
+
+### plt_merge_tracks
+Plot the merged tracks if merge_tracks_along has been set to 1 or 2.
+Options are:
+ - 0 - disables
+ - 1 - enables
+
+
+## Input file formats
+
+
