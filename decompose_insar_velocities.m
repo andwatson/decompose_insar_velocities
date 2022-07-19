@@ -18,6 +18,9 @@
 %   gnss_field.y - vector of y axis coords (m)
 %   gnss_field.N - grid of north gnss vels (mxn)
 %   gnss_field.E - grid of east gnss vels (mxn)
+% Optional extras:
+%   gnss_field.sN - grid of north 1-sigma uncertainties (mxn)
+%   gnss_field.sE - grid of east 1-sigma uncertainties (mxn)
 %
 % Andrew Watson     26-04-2021
 
@@ -134,8 +137,9 @@ else
     borders = [];
 end
 
-% colour palette
-load('/nfs/a285/homes/eearw/gmt/colourmaps/vik/vik.mat')
+% colour palettes
+load('plotting/cpt/vik.mat')
+load('plotting/cpt/batlow.mat')
 
 %% preview inputs
 
@@ -232,13 +236,15 @@ for ii = 1:nframes
     if (mod(ii,round(nframes./10))) == 0
         disp([num2str(round((ii./nframes)*100)) '% completed']);
     end
-
+    
 end
 
-if par.tie2gnss == 1
+if par.tie2gnss ~= 0
     [xx_gnss,yy_gnss] = meshgrid(gnss_field.x,gnss_field.y);
     gnss_E = interp2(xx_gnss,yy_gnss,gnss_field.E,xx_regrid,yy_regrid);
     gnss_N = interp2(xx_gnss,yy_gnss,gnss_field.N,xx_regrid,yy_regrid);
+    gnss_sE = interp2(xx_gnss,yy_gnss,gnss_field.sE,xx_regrid,yy_regrid);
+    gnss_sN = interp2(xx_gnss,yy_gnss,gnss_field.sN,xx_regrid,yy_regrid);
 end
 
 %% downsample
@@ -288,9 +294,11 @@ if par.ds_factor > 0
     compU_regrid = compU_regrid_ds; mask_regrid = mask_regrid_ds;
     clear vel_regrid_ds vstd_regrid_ds inc_regrid_ds phi_regrid_ds mask_regrid_ds
     
-    if par.tie2gnss == 1
+    if par.tie2gnss ~= 0
         [gnss_E,~,~] = downsample_array(gnss_E,par.ds_factor,par.ds_factor,par.ds_method);
         [gnss_N,~,~] = downsample_array(gnss_N,par.ds_factor,par.ds_factor,par.ds_method);
+        [gnss_sE,~,~] = downsample_array(gnss_sE,par.ds_factor,par.ds_factor,par.ds_method);
+        [gnss_sN,~,~] = downsample_array(gnss_sN,par.ds_factor,par.ds_factor,par.ds_method);
     end
     
 end
@@ -324,7 +332,12 @@ if par.merge_tracks_along > 0
         = merge_frames_along_track(par,x_regrid,y_regrid,vel_regrid,...
         frames,compE_regrid,compN_regrid,compU_regrid,vstd_regrid);
     
-    nframes = size(vel_regrid,3);
+    % update number of frames and indexes if frames have been merged
+    if par.merge_tracks_along == 2
+        nframes = size(vel_regrid,3);
+        asc_frames_ind = find(cellfun(@(x) strncmp('A',x(4),4), tracks));
+        desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), tracks));
+    end
     
     % run across-track merging
     if par.merge_tracks_across > 0        
@@ -335,54 +348,20 @@ if par.merge_tracks_along > 0
     
 end
 
-%% tie to gnss
+%% reference frame bias correction
+% remove "reference frame bias" caused by rigid plate motions.
 
-if par.tie2gnss == 1
-    
-    % pre-allocate
-    gnss_resid_plane = zeros([size(xx_regrid) nframes]);
-    
-    for ii = 1:nframes
-        
-        % skip loop if vel is empty (likely because of masking)
-        if all(isnan(vel_regrid(:,:,ii)),'all')
-            disp([frames{ii} ' vel is empty after masking, skipping referencing'])
-            continue
-        end
-        
-        % convert gnss fields to los
-        gnss_los = (gnss_E.*compE_regrid(:,:,ii)) + (gnss_N.*compN_regrid(:,:,ii));
-        
-        % calculate residual
-        vel_tmp = vel_regrid(:,:,ii); 
-        vel_tmp(vel_tmp>mean(vel_tmp(:),'omitnan')+std(vel_tmp(:),'omitnan')) = nan;
-        vel_tmp(vel_tmp<mean(vel_tmp(:),'omitnan')-std(vel_tmp(:),'omitnan')) = nan;
-        
-        gnss_resid = vel_tmp - gnss_los;
-        
-        % remove nans
-        gnss_xx = xx_regrid(~isnan(gnss_resid));
-        gnss_yy = yy_regrid(~isnan(gnss_resid));
-        gnss_resid = gnss_resid(~isnan(gnss_resid));
-        
-        % centre coords
-        midx = (max(gnss_xx) + min(gnss_xx))/2;
-        midy = (max(gnss_yy) + min(gnss_yy))/2;
-        gnss_xx = gnss_xx - midx ;gnss_yy = gnss_yy - midy;
-        all_xx = xx_regrid - midx; all_yy = yy_regrid - midy;
-          
-        % fit plane
-        G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy gnss_xx.*gnss_yy ...
-            gnss_xx.^2 gnss_yy.^2];
-        m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
-        gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy ...
-            + m_resid(4).*all_xx.*all_yy + m_resid(5).*all_xx.^2 + m_resid(6).*all_yy.^2;
-            
-        % remove from insar
-        vel_regrid(:,:,ii) = vel_regrid(:,:,ii) - gnss_resid_plane(:,:,ii);
-        
-    end
-    
+if par.plate_motion == 1
+    [vel_regrid] = plate_motion_bias(par,x_regrid,y_regrid,vel_regrid,...
+        compE_regrid,compN_regrid);
+end
+
+%% tie to gnss
+% Shift InSAR velocities into the same reference frame as the GNSS
+% velocities. Method is given by par.tie2gnss. 
+
+if par.tie2gnss ~= 0
+    [vel_regrid] = ref_to_gnss(par.tie2gnss,xx_regrid,yy_regrid,vel_regrid,compE_regrid,compN_regrid,gnss_E,gnss_N,frames);    
 end
 
 % calculate frame overlaps if requested
@@ -401,103 +380,12 @@ both_coverage = all(cat(3,asc_coverage,desc_coverage),3);
 
 disp('Inverting for E and U')
 
-% pre-al
-m_up = nan(size(xx_regrid));
-m_east = nan(size(xx_regrid));
-m_north = gnss_N;
-var_up = nan(size(xx_regrid));
-var_east = nan(size(xx_regrid));
-var_threshold_mask = zeros(size(xx_regrid));
-condG_threshold_mask = zeros(size(xx_regrid));
+[m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
+    = vel_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
+    compU_regrid,gnss_N,gnss_sN,both_coverage);
 
-% number of points in grid
-npixels = length(xx_regrid(:));
-
-% project gnss into los and remove
-for ii = 1:nframes
-    gnss_Nlos = gnss_N .* compN_regrid(:,:,ii);
-    vel_regrid(:,:,ii) = vel_regrid(:,:,ii) - gnss_Nlos;
-end   
-
-% reshape array for optimal looping (each pixel becomes a row of a 2D array
-% to avoid squeeze within loop).
-vel_regrid = reshape(vel_regrid,[],nframes);
-vstd_regrid = reshape(vstd_regrid,[],nframes);
-compU_regrid = reshape(compU_regrid,[],nframes);
-compE_regrid = reshape(compE_regrid,[],nframes);
-
-% create loop indexes
-[jj,kk] = ndgrid(1:size(xx_regrid,1),1:size(xx_regrid,2));
-jj = jj(:); kk = kk(:);
-
-% progress report interval
-report_it = round(size(vel_regrid,1)/10);
-
-% loop through pixels
-for ii = 1:size(vel_regrid,1)
-    
-    % report progress
-    if mod(ii,report_it) == 0
-        disp([num2str(ii) '/' num2str(size(vel_regrid,1)) ...
-            ' (' num2str(round(ii/size(vel_regrid,1).*100)) '%) rows completed'])
-    end
-    
-    % skip points without coverage in both look directions
-    if both_coverage(jj(ii),kk(ii)) == 0
-        continue
-    end
-
-    % make components
-    Qd = diag(vstd_regrid(ii,:)');
-    G = [compU_regrid(ii,:)' compE_regrid(ii,:)'];
-    d = vel_regrid(ii,:)';
-
-    % remove invalid pixels
-    invalid_pixels = find(isnan(d));
-    d(invalid_pixels) = [];
-    G(invalid_pixels,:) = [];
-    Qd(invalid_pixels,:) = []; Qd(:,invalid_pixels) = [];
-
-    % apply cond(G) threshold
-    if par.condG_threshold > 0 && cond(G) > par.condG_threshold
-        condG_threshold_mask(jj(ii),kk(ii)) = 1;
-        m = nan(1,2); Qm = nan(2,2);
-        continue
-    end
-
-    % solve
-    W = inv(Qd);
-    m = (G'*W*G)^-1 * G'*W*d;
-    Qm = inv(G'*W*G);
-
-    % apply model variance threshold
-    if par.var_threshold > 0 && any(diag(Qm) > par.var_threshold)
-        var_threshold_mask(jj(ii),kk(ii)) = 1;
-        m = nan(1,2); Qm = nan(2,2);
-        continue
-    end
-
-    % save
-    m_up(jj(ii),kk(ii)) = m(1);
-    m_east(jj(ii),kk(ii)) = m(2);    
-    var_up(jj(ii),kk(ii)) = Qm(1,1);
-    var_east(jj(ii),kk(ii)) = Qm(2,2);
-    
-end
-
-% report number of points removed.
-disp([num2str(sum(condG_threshold_mask,'all')) '/' num2str(npixels) ...
-    ' (' num2str(round(sum(condG_threshold_mask,'all')/npixels*100),2) ...
-    '%) points were masked by the cond(G) threshold.'])
-disp([num2str(sum(var_threshold_mask,'all')) '/' num2str(npixels) ...
-    ' (' num2str(round(sum(var_threshold_mask,'all')/npixels*100),2) ...
-    '%) points were masked by the model variance threshold.'])
-
-% reshape back to 3D arrays
-vel_regrid = reshape(vel_regrid,[size(xx_regrid) nframes]);
-vstd_regrid = reshape(vstd_regrid,[size(xx_regrid) nframes]);
-compU_regrid = reshape(compU_regrid,[size(xx_regrid) nframes]);
-compE_regrid = reshape(compE_regrid,[size(xx_regrid) nframes]);
+% [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
+%     = null_line_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,compU_regrid,both_coverage,asc_frames_ind,desc_frames_ind);
 
 %% plot output velocities
 
@@ -518,11 +406,29 @@ plt_data(x_regrid,y_regrid,m_east,lonlim,latlim,clim,'East (mm/yr)',fault_trace,
 colormap(t(2),vik)
 
 t(3) = nexttile; hold on
-plt_data(x_regrid,y_regrid,m_north,lonlim,latlim,[],'North (mm/yr)',fault_trace,borders)
+plt_data(x_regrid,y_regrid,gnss_N,lonlim,latlim,[],'North (mm/yr)',fault_trace,borders)
 
 t(4) = nexttile; hold on
 coverage = sum(~isnan(vel_regrid),3);
 plt_data(x_regrid,y_regrid,coverage,lonlim,latlim,[],'Data coverage',fault_trace,borders)
+
+%% plot velocity uncertainties
+
+lonlim = [min(x_regrid) max(x_regrid)];
+latlim = [min(y_regrid) max(y_regrid)];
+clim = [0 4];
+
+f = figure();
+f.Position([1 3 4]) = [600 1600 800];
+tiledlayout(1,2,'TileSpacing','compact')
+
+t(1) = nexttile; hold on
+plt_data(x_regrid,y_regrid,var_up,lonlim,latlim,clim,'Vertical (mm/yr)',fault_trace,borders)
+colormap(t(1),batlow)
+
+t(2) = nexttile; hold on
+plt_data(x_regrid,y_regrid,var_east,lonlim,latlim,clim,'East (mm/yr)',fault_trace,borders)
+colormap(t(2),batlow)
 
 %% plot variance and cond(G) threshold masks if used
 

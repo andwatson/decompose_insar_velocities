@@ -2,7 +2,8 @@ function [par,insarpar] = readparfile(cfgfile)
 %=================================================================
 % function [parmat] = readparfile(cfgfile)
 %-----------------------------------------------------------------
-% Function to get parameter values from a configure file
+% Function to get parameter values from a config file.
+% A description of the available confif options is given in the README.
 %                                                                  
 % INPUT:                                                           
 %   cfgfile: path to parameter text file (e.g. velmap.conf)
@@ -58,9 +59,17 @@ par.ds_method = getparval(cfgcell,'ds_method','mean',[]);
 
 % marge along-track
 par.merge_tracks_along = getparval(cfgcell,'merge_tracks_along',0);
+par.merge_tracks_along_func = getparval(cfgcell,'merge_tracks_along_func',0);
 
 % merge across-track
 par.merge_tracks_across = getparval(cfgcell,'merge_tracks_across',0);
+
+% reference frame bias
+par.plate_motion = getparval(cfgcell,'plate_motion',0);
+par.plate_motion_file = getparval(cfgcell,'plate_motion_file',[]);
+
+% decomposition method
+par.decomp_method = getparval(cfgcell,'decomp_method',0);
 
 % threshold on cond(G) in inversion
 par.condG_threshold = getparval(cfgcell,'condG_threshold',0);
@@ -87,6 +96,13 @@ par.plt_input_vels = getparval(cfgcell,'plt_input_vels',0);
 
 % plot merged tracks
 par.plt_merge_tracks = getparval(cfgcell,'plt_merge_tracks',0);
+
+% plot plate motion bias corrections
+par.plt_plate_motion = getparval(cfgcell,'plt_plate_motion',0);
+
+% along track merge plotting
+par.plt_merge_along_corr = getparval(cfgcell,'plt_merge_along_corr',0);
+par.plt_merge_along_resid = getparval(cfgcell,'plt_merge_along_resid',0);
 
 %% insar
 

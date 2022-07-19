@@ -132,76 +132,6 @@ for ii = 1:length(track_order_desc)-1
     vel(:,:,tracks_desc_ind(track_order_desc(ii+1))) = vel(:,:,tracks_desc_ind(track_order_desc(ii+1))) - m;    
 end
 
-%% loop through points
-
-% % coord arrays
-% [xx,yy] = meshgrid(x,y);
-% 
-% % pre-al
-% los_av_asc = nan(size(xx)); los_av_desc = nan(size(xx));
-% los_vstd_asc = nan(size(xx)); los_vstd_desc = nan(size(xx));
-% 
-% % number of points in grid
-% npixels = length(xx(:));
-% 
-% % progress report interval
-% report_it = round(size(xx,1)/10);
-% 
-% % loop through pixels
-% for jj = 1:size(xx,1)
-%     for kk = 1:size(xx,2)
-%         
-%         % FOR ASCENDING
-%         d = squeeze(vel(jj,kk,tracks_asc_ind));
-%         G = squeeze(cosd(av_az_asc-az(jj,kk,tracks_asc_ind)) .* cosd(av_inc-inc(jj,kk,tracks_asc_ind)));
-%         Qd = diag(squeeze(vstd(jj,kk,tracks_asc_ind)));
-%         
-%         % remove invalid pixels
-%         invalid_pixels = find(isnan(d));
-%         d(invalid_pixels) = [];
-%         G(invalid_pixels,:) = [];
-%         Qd(invalid_pixels,:) = []; Qd(:,invalid_pixels) = [];
-%         
-%         % solve and save
-%         if ~isempty(d)
-%             W = inv(Qd);
-%             m = (G'*W*G)^-1 * G'*W*d;
-%             Qm = inv(G'*W*G);
-%             
-%             los_av_asc(jj,kk) = m; 
-%             los_vstd_asc(jj,kk) = Qm(1,1);
-%         end
-%                 
-%         
-%         % FOR DESCENDING
-%         d = squeeze(vel(jj,kk,tracks_desc_ind));
-%         G = squeeze(cosd(av_az_desc-az(jj,kk,tracks_desc_ind)) .* cosd(av_inc-inc(jj,kk,tracks_desc_ind)));
-%         Qd = diag(squeeze(vstd(jj,kk,tracks_desc_ind)));
-%         
-%         % remove invalid pixels
-%         invalid_pixels = find(isnan(d));
-%         d(invalid_pixels) = [];
-%         G(invalid_pixels,:) = [];
-%         Qd(invalid_pixels,:) = []; Qd(:,invalid_pixels) = [];
-%         
-%         % solve and save
-%         if ~isempty(d)
-%             W = inv(Qd);
-%             m = (G'*W*G)^-1 * G'*W*d;
-%             Qm = inv(G'*W*G);
-%             
-%             los_av_desc(jj,kk) = m; 
-%             los_vstd_desc(jj,kk) = Qm(1,1);
-%         end       
-%         
-%     end
-%     
-%     % report progress
-%     if mod(jj,report_it) == 0
-%         disp([num2str(jj) '/' num2str(size(xx,1)) ' rows completed'])
-%     end
-% end
-
 %% take average in overlaps
 
 los_av_asc = mean(vel(:,:,tracks_asc_ind),3,'omitnan');
@@ -264,9 +194,6 @@ report_it = round(size(los_av_asc,1)/10);
 for jj = 1:size(los_av_asc,1)
     for kk = 1:size(los_av_asc,2)
         
-        % make components
-%         Qd = diag(squeeze(vstd_regrid(jj,kk,:)));
-        
         d = [los_av_asc(jj,kk); los_av_desc(jj,kk)];
         
         if any(isnan(d)) == 1
@@ -274,16 +201,11 @@ for jj = 1:size(los_av_asc,1)
         end
       
         % solve
-%         W = inv(Qd);
-%         m = (G'*W*G)^-1 * G'*W*d;
         m = (G'*G)^-1 * G'*d;
-%         Qm = inv(G'*W*G);
                
         % save
         m_east(jj,kk) = m(1);
         m_up(jj,kk) = m(2);    
-%         var_up(jj,kk) = Qm(1,1);
-%         var_east(jj,kk) = Qm(2,2);
         
     end
     
