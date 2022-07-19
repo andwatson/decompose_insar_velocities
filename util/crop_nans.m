@@ -6,13 +6,13 @@ function [data_crop,x_ind,y_ind,x_crop,y_crop] = crop_nans(data,x,y)
 % and last all-nan rows and columns.
 %                                                                  
 % INPUT:                                                           
-%   data:
-%   x:
-%   y:
+%   data: 2D array containing a real value are buffered by nans
+%   x: vector of x coords
+%   y: vector of y coords
 % OUTPUT:    
-%   data_crop:
-%   x_crop:
-%   y_crop:
+%   data_crop: cropped version of the input data
+%   x_crop: cropped version of x
+%   y_crop: cropped version of y
 %   
 % Andrew Watson     21-06-2022
 %                                                                  

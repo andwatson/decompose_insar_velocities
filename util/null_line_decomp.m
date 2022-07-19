@@ -7,9 +7,20 @@ function [m_perp1,m_perp2,var_east,var_up,condG_threshold_mask,var_threshold_mas
 % null line.
 %                                                                  
 % INPUT:                                                           
-%   par: 
+%   par: input parameter structure
+%   vel: 3D array of velocities
+%   vstd: uncertainties on velocities
+%   compE, compN, compU: LOS component vectors
+%   both_coverage: mask for where at least two look directions are present
+%   asc_frames_ind: indices of ascending frames
+%   desc_frames_ind: indicies of descending frames
 % OUTPUT:    
-%   track_vel: 
+%   m_perp1: decomp vel in first perp direction
+%   m_perp2: decomp vel in second perp direction
+%   var_east: variance for perp one 
+%   var_up: variance for perp two
+%   condG_threshold_mask: mask based on cond(G) threshold
+%   var_threshold_mask: mask based on variance threshold
 %   
 % Andrew Watson     13-06-2022
 %                                                                  

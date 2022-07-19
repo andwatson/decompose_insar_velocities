@@ -11,7 +11,7 @@ function [vel] = ref_to_gnss(method,xx,yy,vel,compE,compN,gnss_E,gnss_N,frames)
 %   compE, compN, compU: regridded component vectors (3D arrays)
 %   vstd: regridded velocity uncertainties
 % OUTPUT:    
-%   track_vel: 
+%   vel: velocities in GNSS reference system
 %   
 % Andrew Watson     06-06-2022
 %                                                                  

@@ -26,7 +26,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf'; % test_20220520, iran_gacos
+config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf';
 
 % add subdirectory paths
 addpath util plotting

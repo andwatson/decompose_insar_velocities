@@ -3,7 +3,7 @@ function [vel] = plate_motion_bias(par,x,y,vel,compE,compN)
 % function plate_motion_bias()
 %-----------------------------------------------------------------
 % Mitigate the "reference frame effect" caused by rigid plate motions by
-% subtracting the No-Net-Rotation plate motion in ITRF from the LOS
+% subtracting No-Net-Rotation plate motion in ITRF from the LOS
 % velocities.
 %
 % The input plate motion vector file should contain (at least) the
@@ -21,8 +21,6 @@ function [vel] = plate_motion_bias(par,x,y,vel,compE,compN)
 %                                                                  
 %=================================================================
 
-plt = 0;
-
 %% setup
 
 % load plate motion vectors from file
@@ -39,7 +37,7 @@ plate_E = griddata(plate_vels_crop(:,1),plate_vels_crop(:,2),plate_vels_crop(:,3
 plate_N = griddata(plate_vels_crop(:,1),plate_vels_crop(:,2),plate_vels_crop(:,4),xx,yy);
 
 % for plotting
-if plt == 1; vel_orig = vel; load('plotting/cpt/vik.mat'); end
+if par.plt_plate_motion == 1; vel_orig = vel; load('plotting/cpt/vik.mat'); end
 
 %% loop through each velocity field
 
@@ -58,7 +56,7 @@ for ii = 1:size(vel,3)
     vel(:,:,ii) = vel(:,:,ii) - plate_los;
     
     % optional plotting
-    if plt == 1
+    if par.plt_plate_motion == 1
 
         % limits
         clim = [-10 10];
@@ -90,13 +88,3 @@ for ii = 1:size(vel,3)
     end
     
 end
-
-
-
-
-
-% [~,xmin_ind] = min(abs(plate_vels(:,1)-x(1)));
-% [~,xmax_ind] = min(abs(plate_vels(:,1)-x(end)));
-% [~,ymin_ind] = min(abs(plate_vels(:,2)-y(1)));
-% [~,ymax_ind] = min(abs(plate_vels(:,2)-y(end)));
-% plate_vels = plate_vels(ymin_ind:ymax_ind,xmin_ind:xmax_ind);

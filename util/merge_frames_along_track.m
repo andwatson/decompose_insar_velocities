@@ -23,17 +23,6 @@ function [track_vel,track_compE,track_compN,track_compU,track_vstd,unique_tracks
 %                                                                  
 %=================================================================
 
-% pause loop to display frames for each track before and after shift
-plt_before_after = 0;
-plt_resid = 0;
-range_deramp = 0;
-
-%% deramp vels
-
-% for ii = 1:size(vel,3)
-%     vel(:,:,ii) = deramp(x,y,vel(:,:,ii),'poly11');
-% end
-
 %% get unique tracks, split by pass direction
 
 % get indices of ascending and descending frames (for if not merging)
@@ -104,7 +93,7 @@ for ii = 1:length(unique_tracks)
                 % apply offset
                 vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - m;
                 
-                if plt_resid == 1
+                if par.merge_along_plt_resid == 1
                     overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
                     n_ov = n_ov + 1;
                 end
@@ -134,7 +123,7 @@ for ii = 1:length(unique_tracks)
                 % apply offset
                 vel(:,:,track_ind(jj)) = vel(:,:,track_ind(jj)) - overlap_plane;
                 
-                if plt_resid == 1
+                if par.plt_merge_along_resid == 1
                     overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
                     n_ov = n_ov + 1;
                 end
@@ -143,16 +132,16 @@ for ii = 1:length(unique_tracks)
             
     end
     
-    if plt_resid == 1
+    if par.plt_merge_along_resid == 1
         overlaps = overlaps(~cellfun('isempty',overlaps));
         overlap_stats = zeros(length(overlaps),2);
         for nn = 1:length(overlaps)
-%             figure(); tiledlayout(2,1,'TileSpacing','compact')
+            figure(); tiledlayout(2,1,'TileSpacing','compact')
             cropped_overlap = crop_nans(overlaps{nn});
-%             nexttile(); imagesc(cropped_overlap); colorbar
-%             nexttile(); histogram(overlaps{nn});
-%             title(['Mean = ' num2str(mean(cropped_overlap(:),'omitnan')) ...
-%                 ', SD = ' num2str(std(cropped_overlap(:),'omitnan'))])
+            nexttile(); imagesc(cropped_overlap); colorbar
+            nexttile(); histogram(overlaps{nn});
+            title(['Mean = ' num2str(mean(cropped_overlap(:),'omitnan')) ...
+                ', SD = ' num2str(std(cropped_overlap(:),'omitnan'))])
             overlap_stats(nn,:) = [mean(cropped_overlap(:),'omitnan') std(cropped_overlap(:),'omitnan')];
         end
     end
@@ -171,7 +160,7 @@ for ii = 1:length(unique_tracks)
     end
     
     
-    if plt_before_after == 1
+    if par.plt_merge_along_corr == 1
         % plot original frames
         f1 = figure();
         tiledlayout(1,length(track_ind),'TileSpacing','compact')
@@ -215,19 +204,19 @@ end
 
 %% deramp
 
-if range_deramp == 1
-    for ii = 1:size(track_vel,3)  
-
-        % deramp with fixed heading angle
-        if ismember(ii,unique_tracks_asc_ind)
-            theta = 13;
-        else
-            theta = -13;
-        end
-        track_vel(:,:,ii) = deramp_fixed_heading(x,y,track_vel(:,:,ii),theta);
-
-    end
-end
+% if range_deramp == 1
+%     for ii = 1:size(track_vel,3)  
+% 
+%         % deramp with fixed heading angle
+%         if ismember(ii,unique_tracks_asc_ind)
+%             theta = 13;
+%         else
+%             theta = -13;
+%         end
+%         track_vel(:,:,ii) = deramp_fixed_heading(x,y,track_vel(:,:,ii),theta);
+% 
+%     end
+% end
 
 %% plot merged tracks
 
@@ -237,7 +226,7 @@ if par.plt_merge_tracks == 1
     lonlim = [min(x) max(x)];
     latlim = [min(y) max(y)];
     clim = [-10 10];
-    load('/nfs/a285/homes/eearw/gmt/colourmaps/vik/vik.mat')
+    load('plotting/cpt/vik.mat')
     
     % reload borders for ease
     if par.plt_borders == 1

@@ -2,13 +2,17 @@ function [comp_perp1,comp_perp2] = null_line(comp1,comp2)
 %=================================================================
 % function null_line()
 %-----------------------------------------------------------------
-% Calculates the null line from two line-of-sights.
+% Calculates the null line from two line-of-sights (i.e. the line along
+% which two LOS are completely insensitive to ground motion.
+% Returns the two planes for decomposition.
+%
 %                                                                  
 % INPUT:                                                           
-%   los1: [E N U]
-%   los2: [E N U]
+%   comp1: [E N U] component vectors for first look direction
+%   comp2: [E N U] component vectors for second look direction
 % OUTPUT:    
-%   track_vel: 
+%   comp_perp1: plane 1 (perpendicular to null line)
+%   comp_perp2: plane 2
 %   
 % Andrew Watson     13-06-2022
 %                                                                  

@@ -3,7 +3,10 @@ function [data_deramp] = deramp_fixed_heading(x,y,data,theta)
 % function deramp(x,y,data,method)
 %-----------------------------------------------------------------
 % Deramp using a 1st order polynomial plane that tilts about a given
-% heading angle.
+% heading angle. This was originally written to remove azimuth ramps
+% observed in the frame velocities. We now understand these to be plate
+% motion effects, and suggest using "plate_motion_bias.m" to remove these
+% instead.
 %                                                                  
 % INPUT:                                                           
 %   x, y: coordinates
