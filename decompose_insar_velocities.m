@@ -18,9 +18,11 @@
 %   gnss_field.y - vector of y axis coords (m)
 %   gnss_field.N - grid of north gnss vels (mxn)
 %   gnss_field.E - grid of east gnss vels (mxn)
+%   gnss_field.U - grid of vertical gnss vels (mxn)
 % Optional extras:
 %   gnss_field.sN - grid of north 1-sigma uncertainties (mxn)
 %   gnss_field.sE - grid of east 1-sigma uncertainties (mxn)
+%   gnss_field.sU - grid of vertical 1-sigma uncertainties (mxn)
 %
 % Andrew Watson     26-04-2021
 
@@ -243,8 +245,10 @@ if par.tie2gnss ~= 0
     [xx_gnss,yy_gnss] = meshgrid(gnss_field.x,gnss_field.y);
     gnss_E = interp2(xx_gnss,yy_gnss,gnss_field.E,xx_regrid,yy_regrid);
     gnss_N = interp2(xx_gnss,yy_gnss,gnss_field.N,xx_regrid,yy_regrid);
+    gnss_U = interp2(xx_gnss,yy_gnss,gnss_field.U,xx_regrid,yy_regrid);
     gnss_sE = interp2(xx_gnss,yy_gnss,gnss_field.sE,xx_regrid,yy_regrid);
     gnss_sN = interp2(xx_gnss,yy_gnss,gnss_field.sN,xx_regrid,yy_regrid);
+    gnss_sU = interp2(xx_gnss,yy_gnss,gnss_field.sU,xx_regrid,yy_regrid);
 end
 
 %% downsample
@@ -297,8 +301,10 @@ if par.ds_factor > 0
     if par.tie2gnss ~= 0
         [gnss_E,~,~] = downsample_array(gnss_E,par.ds_factor,par.ds_factor,par.ds_method);
         [gnss_N,~,~] = downsample_array(gnss_N,par.ds_factor,par.ds_factor,par.ds_method);
+        [gnss_U,~,~] = downsample_array(gnss_U,par.ds_factor,par.ds_factor,par.ds_method);
         [gnss_sE,~,~] = downsample_array(gnss_sE,par.ds_factor,par.ds_factor,par.ds_method);
         [gnss_sN,~,~] = downsample_array(gnss_sN,par.ds_factor,par.ds_factor,par.ds_method);
+        [gnss_sU,~,~] = downsample_array(gnss_sU,par.ds_factor,par.ds_factor,par.ds_method);
     end
     
 end
@@ -361,7 +367,7 @@ end
 % velocities. Method is given by par.tie2gnss. 
 
 if par.tie2gnss ~= 0
-    [vel_regrid] = ref_to_gnss(par.tie2gnss,xx_regrid,yy_regrid,vel_regrid,compE_regrid,compN_regrid,gnss_E,gnss_N,frames);    
+    [vel_regrid] = ref_to_gnss(par.tie2gnss,xx_regrid,yy_regrid,vel_regrid,compE_regrid,compN_regrid,compU_regrid,gnss_E,gnss_N,gnss_U,frames);    
 end
 
 % calculate frame overlaps if requested
