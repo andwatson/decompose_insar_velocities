@@ -16,7 +16,7 @@ The number of parallel processes to run for the decomposition, which is performe
 
 ### ties2gnss
 Shift relative InSAR velocities into a common reference frame defined by a network of GNSS velocities (e.g. relative -> Eurasia-fixed).
-This is performed by calculating the residual between the interpolated East and North GNSS velocities projected into the line-of-sight of each frame, and the InSAR line-of-sight velocities.
+This is performed by calculating the residual between the interpolated East, North and vertical GNSS velocities projected into the line-of-sight of each frame, and the InSAR line-of-sight velocities.
 We extract the long-wavelength signals from the residual, and subtract these from each frame.
 Two methods for handling the residuals are currently included:
  - 0 - disables the referencing.
