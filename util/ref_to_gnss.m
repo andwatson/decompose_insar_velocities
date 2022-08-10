@@ -30,7 +30,7 @@ for ii = 1:nframes
     end
 
     % convert gnss fields to los
-    gnss_los = (gnss_E.*compE(:,:,ii)) + (gnss_N.*compN(:,:,ii));
+    gnss_los = (gnss_E.*compE(:,:,ii)) + (gnss_N.*compN(:,:,ii)) + (gnss_U.*comU(:,:,ii));
 
     % calculate residual
     vel_tmp = vel(:,:,ii); 
