@@ -104,6 +104,9 @@ par.plt_plate_motion = getparval(cfgcell,'plt_plate_motion',0);
 par.plt_merge_along_corr = getparval(cfgcell,'plt_merge_along_corr',0);
 par.plt_merge_along_resid = getparval(cfgcell,'plt_merge_along_resid',0);
 
+% plot ascending and descending masks
+par.plt_mask_asc_desc = getparval(cfgcell,'plt_mask_asc_desc',0);
+
 %% insar
 
 % file identifiers

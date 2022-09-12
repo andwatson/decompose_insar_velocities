@@ -58,7 +58,7 @@ unique_tracks_desc_ind(unique_tracks_desc_ind==0) = [];
 track_vel = nan([size(vel,[1 2]) length(unique_tracks)]);
 track_compE = nan(size(track_vel)); track_compN = nan(size(track_vel));
 track_compU = nan(size(track_vel)); track_vstd = nan(size(track_vel));
-if plt_resid == 1; overlaps = cell(1,size(vel,3)); n_ov = 1; end
+if par.plt_merge_along_resid == 1; overlaps = cell(1,size(vel,3)); n_ov = 1; end
 
 % coords
 [xx,yy] = meshgrid(x,y);
@@ -93,7 +93,7 @@ for ii = 1:length(unique_tracks)
                 % apply offset
                 vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - m;
                 
-                if par.merge_along_plt_resid == 1
+                if par.plt_merge_along_resid == 1
                     overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
                     n_ov = n_ov + 1;
                 end
@@ -133,15 +133,20 @@ for ii = 1:length(unique_tracks)
     end
     
     if par.plt_merge_along_resid == 1
+        % pre-al
         overlaps = overlaps(~cellfun('isempty',overlaps));
         overlap_stats = zeros(length(overlaps),2);
+        
+        % loop through overlaps
         for nn = 1:length(overlaps)
             figure(); tiledlayout(2,1,'TileSpacing','compact')
-            cropped_overlap = crop_nans(overlaps{nn});
-            nexttile(); imagesc(cropped_overlap); colorbar
+            [cropped_overlap,~,~,x_crop,y_crop] = crop_nans(overlaps{nn},x,y);
+            nexttile(); imagesc(x_crop,y_crop,cropped_overlap,'AlphaData',~isnan(cropped_overlap)); 
+            colorbar; axis xy
             nexttile(); histogram(overlaps{nn});
-            title(['Mean = ' num2str(mean(cropped_overlap(:),'omitnan')) ...
-                ', SD = ' num2str(std(cropped_overlap(:),'omitnan'))])
+            title(['Mean = ' num2str(round(mean(cropped_overlap(:),'omitnan'),2)) ...
+                ', SD = ' num2str(round(std(cropped_overlap(:),'omitnan'),2)) ...
+                'Median = ' num2str(round(median(cropped_overlap(:),'omitnan'),2))])
             overlap_stats(nn,:) = [mean(cropped_overlap(:),'omitnan') std(cropped_overlap(:),'omitnan')];
         end
     end

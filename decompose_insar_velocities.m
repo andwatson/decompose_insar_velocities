@@ -26,7 +26,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/iran_gacos.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/thesis.conf';
 
 % add subdirectory paths
 addpath util plotting
@@ -107,7 +107,7 @@ for ii = 1:nframes
 
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_u '*']);
     [~,~,compU{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name]);
-
+    
     % load mask
     if par.usemask == 1
         namestruct = dir([insarpar.dir{ii} '*' insarpar.id_mask '*']);
@@ -210,7 +210,8 @@ x_regrid = min(cellfun(@min,lon)) : min(cellfun(@min,dx)) : max(cellfun(@max,lon
 y_regrid = min(cellfun(@min,lat)) : min(cellfun(@min,dy)) : max(cellfun(@max,lat));
 dx = min(cellfun(@min,dx)); dy = min(cellfun(@min,dy));
 
-[xx_regrid,yy_regrid] = meshgrid(x_regrid,y_regrid); %new grid to project data onto
+% new grid to project data onto
+[xx_regrid,yy_regrid] = meshgrid(x_regrid,y_regrid); 
 
 % pre-allocate
 vel_regrid = zeros([size(xx_regrid) nframes]);
@@ -220,19 +221,40 @@ compU_regrid = zeros(size(vel_regrid));
 
 for ii = 1:nframes
     
+    % reduce interpolation area using coords of frame
+    [~,xind_min] = min(abs(x_regrid-lon{ii}(1)));
+    [~,xind_max] = min(abs(x_regrid-lon{ii}(end)));
+    [~,yind_min] = min(abs(y_regrid-lat{ii}(end)));
+    [~,yind_max] = min(abs(y_regrid-lat{ii}(1)));    
+    
+    % interpolate vel, vstd, and optional mask
     [xx,yy] = meshgrid(lon{ii},lat{ii});
-    vel_regrid(:,:,ii) =  interp2(xx,yy,vel{ii},xx_regrid,yy_regrid);
-    vstd_regrid(:,:,ii) =  interp2(xx,yy,vstd{ii},xx_regrid,yy_regrid);
+    vel_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
+        = interp2(xx,yy,vel{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
+        yy_regrid(yind_min:yind_max,xind_min:xind_max));
+    
+    vstd_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
+        = interp2(xx,yy,vstd{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
+        yy_regrid(yind_min:yind_max,xind_min:xind_max));
+    
     if par.usemask == 1
-        mask_regrid(:,:,ii) =  interp2(xx,yy,mask{ii},xx_regrid,yy_regrid);
+        mask_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
+            = interp2(xx,yy,mask{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
+            yy_regrid(yind_min:yind_max,xind_min:xind_max));
     end
     
     % ENU may not be downsampled by licsbas, hence different xx yy grids
     [xx,yy] = meshgrid(lon_comp{ii},lat_comp{ii});
-    compE_regrid(:,:,ii) =  interp2(xx,yy,compE{ii},xx_regrid,yy_regrid);
-    compN_regrid(:,:,ii) =  interp2(xx,yy,compN{ii},xx_regrid,yy_regrid);
-    compU_regrid(:,:,ii) =  interp2(xx,yy,compU{ii},xx_regrid,yy_regrid);
-    
+    compE_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
+        = interp2(xx,yy,compE{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
+        yy_regrid(yind_min:yind_max,xind_min:xind_max));
+    compN_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
+        = interp2(xx,yy,compN{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
+        yy_regrid(yind_min:yind_max,xind_min:xind_max));
+    compU_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
+        = interp2(xx,yy,compU{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
+        yy_regrid(yind_min:yind_max,xind_min:xind_max));
+      
     if (mod(ii,round(nframes./10))) == 0
         disp([num2str(round((ii./nframes)*100)) '% completed']);
     end
@@ -246,6 +268,15 @@ if par.tie2gnss ~= 0
     gnss_sE = interp2(xx_gnss,yy_gnss,gnss_field.sE,xx_regrid,yy_regrid);
     gnss_sN = interp2(xx_gnss,yy_gnss,gnss_field.sN,xx_regrid,yy_regrid);
 end
+
+% change zeros to nans
+vstd_regrid(vstd_regrid==0) = nan;
+compE_regrid(compE_regrid==0) = nan;
+compN_regrid(compN_regrid==0) = nan;
+compU_regrid(compU_regrid==0) = nan;
+
+% clear ungridded data
+clear vel vstd compE compN compU
 
 %% downsample
 
@@ -316,10 +347,52 @@ if par.usemask == 1
     
     vel_regrid(mask_regrid==0) = NaN;
     
-    for ii=1:nframes
-        vel{ii}(mask{ii}==0) = nan;
-    end
+%     for ii=1:nframes
+%         vel{ii}(mask{ii}==0) = nan;
+%     end
 
+end
+
+%% plot ascending and descending masks
+% Produces two masks that are useful for plotting.
+% For overlaps, a given point is considered unmasked if it is unmasked in
+% at least one of the masks.
+
+if par.plt_mask_asc_desc == 1
+    
+    % look direction indices
+    asc_frames_ind = find(cellfun(@(x) strncmp('A',x(4),4), frames));
+    desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
+    
+    % sum masks
+    mask_asc = sum(mask_regrid(:,:,asc_frames_ind),3);
+    mask_desc = sum(mask_regrid(:,:,desc_frames_ind),3);
+    
+    % return to ones and zeros
+    mask_asc(mask_asc>=1) = 1;
+    mask_desc(mask_desc>=1) = 1;
+    mask_asc(mask_asc<1) = 0;
+    mask_desc(mask_desc<1) = 0;
+    mask_asc(isnan(mask_asc)) = 0;
+    mask_desc(isnan(mask_desc)) = 0;
+    
+%     mask_asc(mask_asc==0) = nan;
+%     mask_desc(mask_desc==0) = nan;
+    
+    % plot
+    lonlim = [min(x_regrid) max(x_regrid)];
+    latlim = [min(y_regrid) max(y_regrid)];
+    
+    f = figure();
+    f.Position([1 3 4]) = [600 1600 600];
+    tiledlayout(1,2,'TileSpacing','compact')
+    
+    t(1) = nexttile; hold on
+    plt_data(x_regrid,y_regrid,mask_asc,lonlim,latlim,[],'Ascending mask',fault_trace,borders)
+    
+    t(2) = nexttile; hold on
+    plt_data(x_regrid,y_regrid,mask_desc,lonlim,latlim,[],'Descending mask',fault_trace,borders)
+    
 end
 
 %% merge frames along-track (and across-track)
