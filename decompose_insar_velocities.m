@@ -26,10 +26,13 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/thesis.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/test_20220912.conf';
 
 % add subdirectory paths
 addpath util plotting
+
+% begin timer
+tic
 
 %% read parameter file
 
@@ -201,6 +204,36 @@ for ii = 1:nframes
 
 end
 
+%% downsample
+
+if par.ds_factor > 0
+    
+    disp(['Downsampling by a factor of ' num2str(par.ds_factor)])
+    
+    for ii = 1:nframes
+    
+        [vel{ii},lon{ii},lat{ii}] ...
+            = downsample_array(vel{ii},par.ds_factor,par.ds_factor,par.ds_method,lon{ii},lat{ii});        
+        [vstd{ii},~,~] = downsample_array(vstd{ii},par.ds_factor,par.ds_factor,par.ds_method);
+        
+        [compE{ii},lon_comp{ii},lat_comp{ii}] ...
+            = downsample_array(compE{ii},par.ds_factor,par.ds_factor,par.ds_method,lon_comp{ii},lat_comp{ii});
+        [compN{ii},~,~] = downsample_array(compN{ii},par.ds_factor,par.ds_factor,par.ds_method);
+        [compU{ii},~,~] = downsample_array(compU{ii},par.ds_factor,par.ds_factor,par.ds_method);
+        
+        if par.usemask == 1
+            [mask{ii},~,~] ...
+                =  downsample_array(mask{ii},par.ds_factor,par.ds_factor,par.ds_method);
+        end
+        
+        if (mod(ii,round(nframes./10))) == 0
+            disp([num2str(round((ii./nframes)*100)) '% completed']);
+        end
+        
+    end
+    
+end
+
 %% unify grids
 
 disp('Unifying grids')
@@ -277,62 +310,6 @@ compU_regrid(compU_regrid==0) = nan;
 
 % clear ungridded data
 clear vel vstd compE compN compU
-
-%% downsample
-
-if par.ds_factor > 0
-    
-    disp(['Downsampling by a factor of ' num2str(par.ds_factor)])
-    
-    % get downsampled grid coords
-    [~,x_regrid,y_regrid] = downsample_array(vel_regrid(:,:,1),...
-        par.ds_factor,par.ds_factor,par.ds_method,x_regrid,y_regrid);
-    [xx_regrid,yy_regrid] = meshgrid(x_regrid,y_regrid);
-    dx = mean(diff(x_regrid)); dy = mean(diff(y_regrid));
-    
-    % pre-allocate
-    vel_regrid_ds = zeros([length(y_regrid) length(x_regrid) nframes]);
-    vstd_regrid_ds = zeros(size(vel_regrid_ds)); mask_regrid_ds = zeros(size(vel_regrid_ds));
-    compE_regrid_ds = zeros(size(vel_regrid_ds)); compN_regrid_ds = zeros(size(vel_regrid_ds));
-    compU_regrid_ds = zeros(size(vel_regrid_ds));
-    
-    for ii = 1:nframes
-    
-        [vel_regrid_ds(:,:,ii),~,~] ...
-            = downsample_array(vel_regrid(:,:,ii),par.ds_factor,par.ds_factor,par.ds_method);
-        [vstd_regrid_ds(:,:,ii),~,~] ...
-            =  downsample_array(vstd_regrid(:,:,ii),par.ds_factor,par.ds_factor,par.ds_method);
-        [compE_regrid_ds(:,:,ii),~,~] ...
-            =  downsample_array(compE_regrid(:,:,ii),par.ds_factor,par.ds_factor,par.ds_method);
-        [compN_regrid_ds(:,:,ii),~,~] ...
-            =  downsample_array(compN_regrid(:,:,ii),par.ds_factor,par.ds_factor,par.ds_method);
-        [compU_regrid_ds(:,:,ii),~,~] ...
-            =  downsample_array(compU_regrid(:,:,ii),par.ds_factor,par.ds_factor,par.ds_method);
-        
-        if par.usemask == 1
-            [mask_regrid_ds(:,:,ii),~,~] ...
-                =  downsample_array(mask_regrid(:,:,ii),par.ds_factor,par.ds_factor,par.ds_method);
-        end
-        
-        if (mod(ii,round(nframes./10))) == 0
-            disp([num2str(round((ii./nframes)*100)) '% completed']);
-        end
-        
-    end
-    
-    vel_regrid = vel_regrid_ds; vstd_regrid = vstd_regrid_ds;
-    compE_regrid = compE_regrid_ds; compN_regrid = compN_regrid_ds;
-    compU_regrid = compU_regrid_ds; mask_regrid = mask_regrid_ds;
-    clear vel_regrid_ds vstd_regrid_ds inc_regrid_ds phi_regrid_ds mask_regrid_ds
-    
-    if par.tie2gnss ~= 0
-        [gnss_E,~,~] = downsample_array(gnss_E,par.ds_factor,par.ds_factor,par.ds_method);
-        [gnss_N,~,~] = downsample_array(gnss_N,par.ds_factor,par.ds_factor,par.ds_method);
-        [gnss_sE,~,~] = downsample_array(gnss_sE,par.ds_factor,par.ds_factor,par.ds_method);
-        [gnss_sN,~,~] = downsample_array(gnss_sN,par.ds_factor,par.ds_factor,par.ds_method);
-    end
-    
-end
 
 %% apply mask
 
@@ -434,7 +411,8 @@ end
 % velocities. Method is given by par.tie2gnss. 
 
 if par.tie2gnss ~= 0
-    [vel_regrid] = ref_to_gnss(par.tie2gnss,xx_regrid,yy_regrid,vel_regrid,compE_regrid,compN_regrid,gnss_E,gnss_N,frames);    
+    [vel_regrid] = ref_to_gnss(par.tie2gnss,xx_regrid,yy_regrid,...
+        vel_regrid,compE_regrid,compN_regrid,gnss_E,gnss_N,frames);    
 end
 
 % calculate frame overlaps if requested
@@ -453,9 +431,18 @@ both_coverage = all(cat(3,asc_coverage,desc_coverage),3);
 
 disp('Inverting for E and U')
 
+% check that at least one point has at least two look directions
+if sum(both_coverage(:)) == 0
+    error('No pixels with multiple look directions - did you provide more than one track?')
+end
+
 [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
     = vel_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
     compU_regrid,gnss_N,gnss_sN,both_coverage);
+
+% [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
+%     = vel_decomp_vE_vUN(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
+%     compU_regrid,gnss_N,gnss_sN,both_coverage);
 
 % [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
 %     = null_line_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,compU_regrid,both_coverage,asc_frames_ind,desc_frames_ind);
@@ -534,3 +521,8 @@ if par.save_geotif == 1
     geotiffwrite([par.out_path par.out_prefix '_vN.geo.tif'],m_north,georef)
     
 end
+
+%% end
+
+disp('Run complete')
+toc

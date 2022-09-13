@@ -1,21 +1,20 @@
 function [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
-    = vel_decomp(par,vel,vstd,compE,compN,compU,gnss_N,gnss_sN,both_coverage)
+    = vel_decomp_vE_vUN(par,vel,vstd,compE,compN,compU,gnss_N,gnss_sN,both_coverage)
 %=================================================================
 % function vel_decomp()
 %-----------------------------------------------------------------
-% Decompose InSAR LOS velocities into East and Vertical components.
-% North component is provided by interpolated GNSS.
+% Decompose InSAR LOS velocities into East and a joint Up-North component.
+% The Up-North velocities is the seperately decomposed into Up and North
+% using the North GNSS velocitiy.
 %                                                                  
 % INPUT:                                                           
 %   par: 
 % OUTPUT:    
 %   track_vel: 
 %   
-% Andrew Watson     07-06-2022
+% Andrew Watson     12-09-2022
 %                                                                  
 %=================================================================
-
-method = 0;
 
 %% setup
 
@@ -24,26 +23,22 @@ rowcol = size(vel,[1 2]);
 nframes = size(vel,3);
 
 % pre-al
-m_up = nan(rowcol);
+m_UN = nan(rowcol);
 m_east = nan(rowcol);
-var_up = nan(rowcol);
+var_UN = nan(rowcol);
 var_east = nan(rowcol);
 var_threshold_mask = zeros(rowcol);
 condG_threshold_mask = zeros(rowcol);
 
+% calculate UN component vector, first by calculating the incidence angle
+% and heading
+inc = asind(compU);
+% az = acosd(compE./sind(inc))-180;
+az = asind(compN./sind(inc));
+compUN = sqrt(1 - sind(inc).^2 .* cosd(az).^2);
+
 % number of points in grid
 npixels = numel(vel(:,:,1));
-
-% project gnss into los and remove
-if method == 0
-    for ii = 1:nframes
-        gnss_Nlos = gnss_N .* compN(:,:,ii);
-        vel(:,:,ii) = vel(:,:,ii) - gnss_Nlos;
-
-        % propagate error on N
-        vstd(:,:,ii) = sqrt(vstd(:,:,ii).^2 + gnss_sN.^2);
-    end   
-end
 
 %% decompose pixel by pixel
 
@@ -55,13 +50,8 @@ jj = jj(:); kk = kk(:);
 % to avoid squeeze within loop).
 vel = reshape(vel,[],nframes);
 vstd = reshape(vstd,[],nframes);
-compU = reshape(compU,[],nframes);
+compUN = reshape(compUN,[],nframes);
 compE = reshape(compE,[],nframes);
-compN = reshape(compN,[],nframes);
-if method == 1
-    gnss_N = gnss_N(:);
-    gnss_sN = gnss_sN(:);
-end
 
 % progress report interval
 report_it = round(size(vel,1)/10);
@@ -81,15 +71,10 @@ for ii = 1:size(vel,1)
     end
 
     % make components
-    if method == 0
-        Qd = diag(vstd(ii,:));
-        G = [compU(ii,:)' compE(ii,:)'];
-        d = vel(ii,:)';
-    else
-        Qd = diag([vstd(ii,:) gnss_sN(ii)]);
-        G = [[compU(ii,:)' compE(ii,:)' compN(ii,:)']; [0 0 1]];
-        d = [vel(ii,:)'; gnss_N(ii)];
-    end
+
+    Qd = diag(vstd(ii,:));
+    G = [compUN(ii,:)' compE(ii,:)'];
+    d = vel(ii,:)';
 
     % remove invalid pixels
     invalid_pixels = find(isnan(d));
@@ -117,23 +102,25 @@ for ii = 1:size(vel,1)
     end
 
     % save
-    m_up(jj(ii),kk(ii)) = m(1);
+    m_UN(jj(ii),kk(ii)) = m(1);
     m_east(jj(ii),kk(ii)) = m(2);    
-    var_up(jj(ii),kk(ii)) = Qm(1,1);
+    var_UN(jj(ii),kk(ii)) = Qm(1,1);
     var_east(jj(ii),kk(ii)) = Qm(2,2);
     
 end
 
-% report number of points removed.
-disp([num2str(sum(condG_threshold_mask,'all')) '/' num2str(npixels) ...
-    ' (' num2str(round(sum(condG_threshold_mask,'all')/npixels*100),2) ...
-    '%) points were masked by the cond(G) threshold.'])
-disp([num2str(sum(var_threshold_mask,'all')) '/' num2str(npixels) ...
-    ' (' num2str(round(sum(var_threshold_mask,'all')/npixels*100),2) ...
-    '%) points were masked by the model variance threshold.'])
+%% decompose vUN into vU and vN
 
-% reshape back to 3D arrays
-% vel = reshape(vel,[rowcol nframes]);
-% vstd = reshape(vstd,[rowcol nframes]);
-% compU = reshape(compU,[rowcol nframes]);
-% compE = reshape(compE,[rowcol nframes]);
+% estimate vU for all frames/tracks
+UN2U = (sqrt(1 - sind(inc).^2 .* cosd(az).^2)) ./ cosd(inc);
+N2U = (sind(az).*sind(inc)) ./ cosd(inc);
+m_up = m_UN.*UN2U - gnss_N.*N2U;
+
+% same for the uncertainty
+UN2U_var = (1 - sind(inc).^2 .* cosd(az).^2) ./ cosd(inc);
+N2U_var = ((sind(az).^2).*(sind(inc).^2)) ./ (cosd(inc).^2);
+var_up = sqrt((var_UN.^2 .* UN2U_var) + (gnss_sN .* N2U_var));
+
+% take the weighted mean
+m_up = sum(m_up.*(1./var_up),3,'omitnan') ./ sum((1./var_up),3,'omitnan');
+var_up = sum(var_up.^2,3,'omitnan') ./ sum(var_up,3,'omitnan');
