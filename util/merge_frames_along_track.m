@@ -132,6 +132,7 @@ for ii = 1:length(unique_tracks)
             
     end
     
+    % plot residuals between overlaps
     if par.plt_merge_along_resid == 1
         % pre-al
         overlaps = overlaps(~cellfun('isempty',overlaps));
@@ -151,6 +152,7 @@ for ii = 1:length(unique_tracks)
         end
     end
     
+    % merge frames in track into single velocity field
     if par.merge_tracks_along == 2
         % take mean of overlap and store new vel
         track_vel(:,:,ii) = mean(vel(:,:,track_ind),3,'omitnan');
@@ -164,7 +166,7 @@ for ii = 1:length(unique_tracks)
         track_vstd(:,:,ii) = mean(vstd(:,:,track_ind),3,'omitnan');
     end
     
-    
+    % plot original velocities and merged result
     if par.plt_merge_along_corr == 1
         % plot original frames
         f1 = figure();
@@ -206,22 +208,6 @@ if par.merge_tracks_along == 1
     track_compE = compE; track_compN = compN; track_compU = compU;
     unique_tracks_asc_ind = asc_frames_ind; unique_tracks_desc_ind = desc_frames_ind;
 end
-
-%% deramp
-
-% if range_deramp == 1
-%     for ii = 1:size(track_vel,3)  
-% 
-%         % deramp with fixed heading angle
-%         if ismember(ii,unique_tracks_asc_ind)
-%             theta = 13;
-%         else
-%             theta = -13;
-%         end
-%         track_vel(:,:,ii) = deramp_fixed_heading(x,y,track_vel(:,:,ii),theta);
-% 
-%     end
-% end
 
 %% plot merged tracks
 

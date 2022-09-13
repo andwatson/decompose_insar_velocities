@@ -31,10 +31,11 @@ var_threshold_mask = zeros(rowcol);
 condG_threshold_mask = zeros(rowcol);
 
 % calculate UN component vector, first by calculating the incidence angle
-% and heading
-inc = asind(compU);
-% az = acosd(compE./sind(inc))-180;
-az = asind(compN./sind(inc));
+% and heading. Incidence angle is measured from the vertical, and azimuth
+% is measured negatively counterclockwise from north. This is to match the
+% definitions in Qi's work.
+inc = 90 - asind(compU);
+az = acosd(compE./sind(inc))-180;
 compUN = sqrt(1 - sind(inc).^2 .* cosd(az).^2);
 
 % number of points in grid
@@ -71,7 +72,6 @@ for ii = 1:size(vel,1)
     end
 
     % make components
-
     Qd = diag(vstd(ii,:));
     G = [compUN(ii,:)' compE(ii,:)'];
     d = vel(ii,:)';

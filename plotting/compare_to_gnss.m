@@ -1,92 +1,62 @@
 %% compare_to_gnss.m
+% Plot residual between gnss velocities and decomposed insar velocities.
+% Currently hardcoded to compare to East GNSS vel.
+% Compares to the median of the pixels within dist_threshold of each gnss
+% station.
 %
-% Compare a veloicity field (stored as a tif) to GNSS station velocities.
-%
-% Andrew Watson     06-06-2022
+% Andrew Watson     2022-09-12
 
-%% setup
+dist_threshold = 0.1;
 
-% input files
-vel_dir = '/scratch/eearw/decomp_frame_vels/out/ref_tests/';
-vel_file = 'filt_81km_vE.geo.tif';
-gnss_file = '/nfs/a285/homes/eearw/gmt/khorrami_gnss_trimmed.csv';
+%% load
 
-% component toggle - options are East, North, LOS
-comp = 'East';
+% vels
+vel_file = '/scratch/eearw/decomp_frame_vels/out/2km_for_plotting/iran_gacos_ml2_vE.geo.tif';
+[lon,lat,vel,~,~] = read_geotiff(vel_file);
 
-%% load inputs
-
-% load geotifs
-[lon,lat,vel,~,~] = read_geotiff([vel_dir vel_file]);
-
-% load gnss vels
+% gnss
+gnss_file = '/scratch/eearw/decomp_frame_vels/gnss/khor/cleaned_stations/khor_vert_10mm_gf7_buff01.csv';
 gnss = readmatrix(gnss_file);
 
-%% calculate residuals
+%% calc resid
 
-% isolate gnss component for comparison
-switch comp
-    case 'East'
-        gnss_comp = gnss(:,[1 2 3]);
-        
-    case 'North'
-        gnss_comp = gnss(:,[1 2 4]);
-        
+% pre-al
+resid = nan(size(gnss,1),3);
+resid(:,1:2) = gnss(:,1:2);
+
+% coords grid
+[xx,yy] = meshgrid(lon,lat);
+
+% loop through gnss
+for ii = 1:size(gnss,1)
+    
+    % distance from gnss
+    dist_from_gnss = sqrt((xx-gnss(ii,1)).^2 + (yy-gnss(ii,2)).^2);
+    
+    % residual
+    resid(ii,3) = gnss(ii,3) - median(vel(dist_from_gnss<=dist_threshold),'omitnan');
+    
 end
 
-% calculate residual
-gnss_resid = zeros(size(gnss_comp,1),1);
+% clear nans (where gnss and vel don't overlap)
+resid(isnan(resid(:,3)),:) = [];
 
-for ii = 1:size(gnss_comp,1)
-    
-    % index of closest vel to gnss stations
-    [~,ind_x] = min(abs(lon-gnss_comp(ii,1)));
-    [~,ind_y] = min(abs(lat-gnss_comp(ii,2)));
-    
-    gnss_resid(ii) = gnss_comp(ii,3) - vel(ind_y,ind_x);
-end
+%% plot
 
-%% plot results
+load('cpt/vik.mat')
 
-% set plotting parameters
 lonlim = [min(lon) max(lon)];
 latlim = [min(lat) max(lat)];
-clim = [-10 10];
-load('/nfs/a285/homes/eearw/gmt/colourmaps/vik/vik.mat')
 
 figure(); hold on
-plt_data(lon,lat,vel,lonlim,latlim,clim,'East and GNSS residuals (mm/yr)',[],[])
-scatter(gnss_comp(:,1),gnss_comp(:,2),70,gnss_resid,'Filled','MarkerEdgeColor','k')
-colormap(vik)
+tiledlayout(2,1,'TileSpacing','compact')
 
-figure()
-histogram(gnss_resid,20);
-title('GNSS residual (mm/yr)')
+nexttile(); hold on
+imagesc(lon,lat,vel,'AlphaData',~isnan(vel))
+scatter(resid(:,1),resid(:,2),40,resid(:,3),'Filled','MarkerEdgeColor','k')
+colorbar; colormap(vik); caxis([-5 5])
+xlim(lonlim); ylim(latlim)
 
-
-
-
-
-
-
-
-
-
-% [~,~,compE,~,~] = read_geotiff([vel_dir Efile]);
-% [~,~,compN,~,~] = read_geotiff([vel_dir Nfile]);
-% [~,~,compU,~,~] = read_geotiff([vel_dir Ufile]);
-
-% case 'LOS'
-%     gnss_comp = gnss(:,1:3);
-% 
-%     for ii = 1:size(gnss_comp,1)
-% 
-%         % get index
-%         [~,ind_x] = min(abs(lon-gnss_los(ii,1)));
-%         [~,ind_y] = min(abs(lat-gnss_los(ii,2)));
-% 
-%         % project
-%         gnss_comp(ii,3) = gnss(ii,3).*compE(ind_y,ind_x) ...
-%             + gnss(ii,4).*compN(ind_y,ind_x);
-% 
-%     end
+nexttile()
+histogram(resid(:,3))
+ylabel('Residual (mm/yr)')

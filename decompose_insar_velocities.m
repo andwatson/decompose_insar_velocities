@@ -26,7 +26,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/test_20220912.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/test_20220913.conf';
 
 % add subdirectory paths
 addpath util plotting
@@ -436,14 +436,23 @@ if sum(both_coverage(:)) == 0
     error('No pixels with multiple look directions - did you provide more than one track?')
 end
 
-[m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
-    = vel_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
-    compU_regrid,gnss_N,gnss_sN,both_coverage);
+if par.decomp_method == 0 || par.decomp_method == 1
+    
+    % either remove gnss N, and decompose into vE and vU, or include gnss N
+    % in the linear problem, and solve for vE, vU, and vN
+    [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
+        = vel_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
+        compU_regrid,gnss_N,gnss_sN,both_coverage);
 
-% [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
-%     = vel_decomp_vE_vUN(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
-%     compU_regrid,gnss_N,gnss_sN,both_coverage);
-
+elseif par.decomp_method == 2
+    
+    % decompose into vE and vUN, then split vUN into vU and vN (Qi's
+    % method)
+    [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
+        = vel_decomp_vE_vUN(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
+        compU_regrid,gnss_N,gnss_sN,both_coverage);    
+end
+    
 % [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
 %     = null_line_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,compU_regrid,both_coverage,asc_frames_ind,desc_frames_ind);
 

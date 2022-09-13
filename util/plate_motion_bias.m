@@ -26,8 +26,15 @@ function [vel] = plate_motion_bias(par,x,y,vel,compE,compN)
 % load plate motion vectors from file
 plate_vels = readmatrix(par.plate_motion_file);
 
-% crop to the overall region covered by the insar
-insar_poly = [x(1) y(1); x(end) y(1); x(end) y(end); x(1) y(end)];
+% crop to the overall region covered by the insar, expanding the area by
+% 20% of what the InSAR covers
+buffer_x = (x(end)-x(1)).*0.2;
+buffer_y = (y(end)-y(1)).*0.2;
+
+insar_poly = [x(1)-buffer_x y(1)-buffer_y; 
+                x(end)+buffer_x y(1)-buffer_y; 
+                x(end)+buffer_x y(end)+buffer_y;
+                x(1)-buffer_x y(end)+buffer_y];
 [in_poly,~] = inpolygon(plate_vels(:,1),plate_vels(:,2),insar_poly(:,1),insar_poly(:,2));
 plate_vels_crop = plate_vels(in_poly,:);
 

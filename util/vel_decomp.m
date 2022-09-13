@@ -35,7 +35,7 @@ condG_threshold_mask = zeros(rowcol);
 npixels = numel(vel(:,:,1));
 
 % project gnss into los and remove
-if method == 0
+if par.decomp_method == 0
     for ii = 1:nframes
         gnss_Nlos = gnss_N .* compN(:,:,ii);
         vel(:,:,ii) = vel(:,:,ii) - gnss_Nlos;
@@ -58,7 +58,7 @@ vstd = reshape(vstd,[],nframes);
 compU = reshape(compU,[],nframes);
 compE = reshape(compE,[],nframes);
 compN = reshape(compN,[],nframes);
-if method == 1
+if par.decomp_method == 1
     gnss_N = gnss_N(:);
     gnss_sN = gnss_sN(:);
 end
@@ -81,7 +81,7 @@ for ii = 1:size(vel,1)
     end
 
     % make components
-    if method == 0
+    if par.decomp_method == 0
         Qd = diag(vstd(ii,:));
         G = [compU(ii,:)' compE(ii,:)'];
         d = vel(ii,:)';
