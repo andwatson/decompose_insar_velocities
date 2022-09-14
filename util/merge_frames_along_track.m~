@@ -34,17 +34,17 @@ tracks = cellfun(@(x) x(1:4), frames, 'UniformOutput', false);
 unique_tracks = unique(tracks);
 
 % pre-allocate
-% unique_tracks_asc = cell(0); unique_tracks_desc = cell(0);
+unique_tracks_asc = cell(0); unique_tracks_desc = cell(0);
 unique_tracks_asc_ind = 1:length(unique_tracks); 
 unique_tracks_desc_ind = 1:length(unique_tracks); 
 
 % sort tracks by pass direction 
 for ii = 1:length(unique_tracks)
     if unique_tracks{ii}(4) == 'A'
-%         unique_tracks_asc{end+1} = unique_tracks{ii};
+        unique_tracks_asc{end+1} = unique_tracks{ii};
         unique_tracks_desc_ind(ii) = 0;
     elseif unique_tracks{ii}(4) == 'D'
-%         unique_tracks_desc{end+1} = unique_tracks{ii};
+        unique_tracks_desc{end+1} = unique_tracks{ii};
         unique_tracks_asc_ind(ii) = 0;
     end
 end
@@ -71,11 +71,10 @@ multi_segment = [];
 % loop through each track
 for ii = 1:length(unique_tracks)
     
-    disp(['Merging ' unique_tracks{ind_count}])
+    disp(['Merging ' unique_tracks{ii}])
     
     % get inds for frames on that track
-    track_ind = find(cellfun(@(x) ...
-        strncmp(unique_tracks{ind_count},x,length(unique_tracks{ind_count})), tracks));
+    track_ind = find(cellfun(@(x) strncmp(unique_tracks{ii},x,length(unique_tracks{ii})), tracks));
         
     switch par.merge_tracks_along_func
         case 0 % static offset
@@ -178,10 +177,10 @@ for ii = 1:length(unique_tracks)
             
         else
             % number of segments
-            n_seg = size(multi_segment,1) + 1;
+            n_seg = length(multi_segment,1) + 1;
             
             % convert multi_segment to indexes
-            multi_segment = [1; multi_segment(:); length(track_ind)];
+            multi_segment = [1 multi_segment 
             
             % add extra layers onto track arrays
             track_vel = cat(3,track_vel,nan([size(vel,[1 2]) n_seg-1]));
@@ -196,24 +195,9 @@ for ii = 1:length(unique_tracks)
             unique_tracks = repelem(unique_tracks,repelem_vec);
             
             % save segments to different array layers
-            ind_count_inc = 0;
-            for kk = 1:2:length(multi_segment)
+            for kk = 1:n_seg
                 
-                % take mean of subset of frames on track
-                track_vel(:,:,ind_count+ind_count_inc) ...
-                    = mean(vel(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
-                
-                track_compE(:,:,ind_count+ind_count_inc) ...
-                    = mean(compE(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
-                track_compN(:,:,ind_count+ind_count_inc) ...
-                    = mean(compN(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
-                track_compU(:,:,ind_count+ind_count_inc) ...
-                    = mean(compU(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
-                
-                track_vstd(:,:,ind_count+ind_count_inc) ...
-                    = mean(vstd(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
-                
-                ind_count_inc = ind_count_inc + 1;
+                track_vel(:,:,ind_count) = mean(vel(:,:,track_ind),3,'omitnan');
                 
             end
             
@@ -255,7 +239,7 @@ for ii = 1:length(unique_tracks)
     end
     
     % report progress
-    disp([num2str(ind_count) '/' num2str(length(unique_tracks)) ' complete'])
+    disp([num2str(ii) '/' num2str(length(unique_tracks)) ' complete'])
     
     % increment
     ind_count = ind_count + 1;
@@ -275,10 +259,6 @@ end
 %% plot merged tracks
 
 if par.plt_merge_tracks == 1
-    
-    % asc and desc indices
-    unique_tracks_asc_ind = find(cellfun(@(x) strncmp('A',x(4),4), unique_tracks));
-    unique_tracks_desc_ind = find(cellfun(@(x) strncmp('D',x(4),4), unique_tracks));
     
     % set plotting parameters
     lonlim = [min(x) max(x)];
