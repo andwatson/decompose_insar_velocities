@@ -49,6 +49,7 @@ par.out_prefix = getparval(cfgcell,'out_prefix',[]);
 
 % tie to gnss
 par.tie2gnss = getparval(cfgcell,'tie2gnss',0);
+par.ref_poly_order = getparval(cfgcell,'ref_poly_order',[]);
 
 % use mask
 par.usemask = getparval(cfgcell,'usemask',0);
@@ -99,6 +100,7 @@ par.plt_merge_tracks = getparval(cfgcell,'plt_merge_tracks',0);
 
 % plot plate motion bias corrections
 par.plt_plate_motion = getparval(cfgcell,'plt_plate_motion',0);
+par.plt_plate_motion_indv = getparval(cfgcell,'plt_plate_motion_indv',0);
 
 % along track merge plotting
 par.plt_merge_along_corr = getparval(cfgcell,'plt_merge_along_corr',0);
@@ -106,6 +108,12 @@ par.plt_merge_along_resid = getparval(cfgcell,'plt_merge_along_resid',0);
 
 % plot ascending and descending masks
 par.plt_mask_asc_desc = getparval(cfgcell,'plt_mask_asc_desc',0);
+
+% plot decomposed velocity uncertainties
+par.plt_decomp_uncer = getparval(cfgcell,'plt_decomp_uncer',0);
+
+% plot var and cond(G) threshold masks
+par.plt_threshold_masks = getparval(cfgcell,'plt_threshold_masks',0);
 
 %% insar
 

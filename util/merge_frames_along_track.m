@@ -295,7 +295,8 @@ if par.plt_merge_tracks == 1
     
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
-    tiledlayout(1,2,'TileSpacing','compact')
+    t = tiledlayout(1,2,'TileSpacing','compact');
+    title(t,'Along-track merge')
     
     % plot ascending tracks
     t(1) = nexttile; hold on

@@ -1,4 +1,4 @@
-function [vel] = ref_to_gnss(method,xx,yy,vel,compE,compN,gnss_E,gnss_N,frames)
+function [vel] = ref_to_gnss(par,xx,yy,vel,compE,compN,gnss_E,gnss_N,frames)
 %=================================================================
 % function ref_to_gnss()
 %-----------------------------------------------------------------
@@ -40,8 +40,8 @@ for ii = 1:nframes
     gnss_resid = vel_tmp - gnss_los;
     
     % method switch
-    switch method
-        case 1 % second order polynomial surface
+    switch par.tie2gnss
+        case 1 % polynomial surface
             
             % remove nans
             gnss_xx = xx(~isnan(gnss_resid));
@@ -54,12 +54,24 @@ for ii = 1:nframes
             gnss_xx = gnss_xx - midx ;gnss_yy = gnss_yy - midy;
             all_xx = xx - midx; all_yy = yy - midy;
 
-            % fit plane
-            G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy gnss_xx.*gnss_yy ...
-                gnss_xx.^2 gnss_yy.^2];
-            m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
-            gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy ...
-                + m_resid(4).*all_xx.*all_yy + m_resid(5).*all_xx.^2 + m_resid(6).*all_yy.^2;
+            % check that an order has been set
+            if isempty(par.ref_poly_order)
+                error('Must set par.ref_poly_order if using poly for referencing')
+            end
+            
+            % fit polynomial
+            if par.ref_poly_order == 1 % 1st order
+                G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy];
+                m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
+                gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy;
+                
+            elseif par.ref_poly_order == 2 % 2nd order
+                G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy gnss_xx.*gnss_yy ...
+                    gnss_xx.^2 gnss_yy.^2];
+                m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
+                gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy ...
+                    + m_resid(4).*all_xx.*all_yy + m_resid(5).*all_xx.^2 + m_resid(6).*all_yy.^2;
+            end
             
         case 2 % filtering
             

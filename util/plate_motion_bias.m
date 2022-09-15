@@ -1,4 +1,4 @@
-function [vel] = plate_motion_bias(par,x,y,vel,compE,compN)
+function [vel] = plate_motion_bias(par,x,y,vel,compE,compN,asc_frames_ind,desc_frames_ind)
 %=================================================================
 % function plate_motion_bias()
 %-----------------------------------------------------------------
@@ -14,6 +14,8 @@ function [vel] = plate_motion_bias(par,x,y,vel,compE,compN)
 %   x, y: vectors of longitude and latitude
 %   vel: regridded velocities (3D array)
 %   compE, compN: regridded component vectors (3D arrays)
+%   asc_frames_ind, desc_frames_ind: indices in vel for asc and desc
+%       frames/tracks
 % OUTPUT:    
 %   vel: regridded velocities - plate motion 
 %   
@@ -63,7 +65,7 @@ for ii = 1:size(vel,3)
     vel(:,:,ii) = vel(:,:,ii) - plate_los;
     
     % optional plotting
-    if par.plt_plate_motion == 1
+    if par.plt_plate_motion_indv == 1
 
         % limits
         clim = [-10 10];
@@ -94,4 +96,38 @@ for ii = 1:size(vel,3)
         
     end
     
+end
+
+%% plot all corrected frames
+
+if par.plt_plate_motion == 1
+    
+    % set plotting parameters
+    lonlim = [min(x) max(x)];
+    latlim = [min(y) max(y)];
+    clim = [-10 10];
+    load('plotting/cpt/vik.mat')
+    
+    % reload borders for ease
+    if par.plt_borders == 1
+        borders = load(par.borders_file);
+    else
+        borders = [];
+    end
+    
+    f = figure();
+    f.Position([1 3 4]) = [600 1600 600];
+    t = tiledlayout(1,2,'TileSpacing','compact');
+    title(t,'After plate motion correction')
+    
+    % plot ascending tracks
+    t(1) = nexttile; hold on
+    plt_data(x,y,vel(:,:,asc_frames_ind),lonlim,latlim,clim,'Ascending (mm/yr)',[],borders)
+    colormap(t(1),vik)
+    
+    % plot descending tracks
+    t(2) = nexttile; hold on
+    plt_data(x,y,vel(:,:,desc_frames_ind),lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
+    colormap(t(2),vik)
+
 end

@@ -26,7 +26,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/test_20220913.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/thesis_ds.conf';
 
 % add subdirectory paths
 addpath util plotting
@@ -162,7 +162,8 @@ if par.plt_input_vels == 1
     
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
-    tiledlayout(1,2,'TileSpacing','compact')
+    t = tiledlayout(1,2,'TileSpacing','compact');
+    title(t,'Input velocities')
     
     % plot ascending tracks
     t(1) = nexttile; hold on
@@ -353,16 +354,14 @@ if par.plt_mask_asc_desc == 1
     mask_asc(isnan(mask_asc)) = 0;
     mask_desc(isnan(mask_desc)) = 0;
     
-%     mask_asc(mask_asc==0) = nan;
-%     mask_desc(mask_desc==0) = nan;
-    
     % plot
     lonlim = [min(x_regrid) max(x_regrid)];
     latlim = [min(y_regrid) max(y_regrid)];
     
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
-    tiledlayout(1,2,'TileSpacing','compact')
+    t = tiledlayout(1,2,'TileSpacing','compact');
+    title('Combined masks for ascending and descending')
     
     t(1) = nexttile; hold on
     plt_data(x_regrid,y_regrid,mask_asc,lonlim,latlim,[],'Ascending mask',fault_trace,borders)
@@ -401,9 +400,9 @@ end
 %% reference frame bias correction
 % remove "reference frame bias" caused by rigid plate motions.
 
-if par.plate_motion == 1
+if par.plate_motion == 1    
     [vel_regrid] = plate_motion_bias(par,x_regrid,y_regrid,vel_regrid,...
-        compE_regrid,compN_regrid);
+        compE_regrid,compN_regrid,asc_frames_ind,desc_frames_ind);
 end
 
 %% tie to gnss
@@ -411,7 +410,7 @@ end
 % velocities. Method is given by par.tie2gnss. 
 
 if par.tie2gnss ~= 0
-    [vel_regrid] = ref_to_gnss(par.tie2gnss,xx_regrid,yy_regrid,...
+    [vel_regrid] = ref_to_gnss(par,xx_regrid,yy_regrid,...
         vel_regrid,compE_regrid,compN_regrid,gnss_E,gnss_N,frames);    
 end
 
@@ -462,9 +461,11 @@ lonlim = [min(x_regrid) max(x_regrid)];
 latlim = [min(y_regrid) max(y_regrid)];
 clim = [-10 10];
 
+% East and vertical
 f = figure();
-f.Position([1 3 4]) = [600 1600 1200];
-tiledlayout(2,2,'TileSpacing','compact')
+f.Position([1 3 4]) = [600 2800 1200];
+t = tiledlayout(1,2,'TileSpacing','compact');
+title(t,'Decomposed velocities')
 
 t(1) = nexttile; hold on
 plt_data(x_regrid,y_regrid,m_up,lonlim,latlim,clim,'Vertical (mm/yr)',fault_trace,borders)
@@ -473,6 +474,12 @@ colormap(t(1),vik)
 t(2) = nexttile; hold on
 plt_data(x_regrid,y_regrid,m_east,lonlim,latlim,clim,'East (mm/yr)',fault_trace,borders)
 colormap(t(2),vik)
+
+% North and  coverage
+f = figure();
+f.Position([1 3 4]) = [600 2800 1200];
+t = tiledlayout(1,2,'TileSpacing','compact');
+title(t,'Decomposed velocities and coverage')
 
 t(3) = nexttile; hold on
 plt_data(x_regrid,y_regrid,gnss_N,lonlim,latlim,[],'North (mm/yr)',fault_trace,borders)
@@ -483,29 +490,35 @@ plt_data(x_regrid,y_regrid,coverage,lonlim,latlim,[],'Data coverage',fault_trace
 
 %% plot velocity uncertainties
 
-lonlim = [min(x_regrid) max(x_regrid)];
-latlim = [min(y_regrid) max(y_regrid)];
-clim = [0 4];
+if par.plt_decomp_uncer == 1
 
-f = figure();
-f.Position([1 3 4]) = [600 1600 800];
-tiledlayout(1,2,'TileSpacing','compact')
+    lonlim = [min(x_regrid) max(x_regrid)];
+    latlim = [min(y_regrid) max(y_regrid)];
+    clim = [0 4];
 
-t(1) = nexttile; hold on
-plt_data(x_regrid,y_regrid,var_up,lonlim,latlim,clim,'Vertical (mm/yr)',fault_trace,borders)
-colormap(t(1),batlow)
+    f = figure();
+    f.Position([1 3 4]) = [600 1600 800];
+    t = tiledlayout(1,2,'TileSpacing','compact');
+    title(t,'Decomposed velocity uncertainties')
 
-t(2) = nexttile; hold on
-plt_data(x_regrid,y_regrid,var_east,lonlim,latlim,clim,'East (mm/yr)',fault_trace,borders)
-colormap(t(2),batlow)
+    t(1) = nexttile; hold on
+    plt_data(x_regrid,y_regrid,var_up,lonlim,latlim,clim,'Vertical (mm/yr)',fault_trace,borders)
+    colormap(t(1),batlow)
+
+    t(2) = nexttile; hold on
+    plt_data(x_regrid,y_regrid,var_east,lonlim,latlim,clim,'East (mm/yr)',fault_trace,borders)
+    colormap(t(2),batlow)
+
+end
 
 %% plot variance and cond(G) threshold masks if used
 
-if par.condG_threshold > 0 || par.var_threshold > 0
+if par.plt_threshold_masks == 1
     
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
-    tiledlayout(1,2,'TileSpacing','compact')
+    t = tiledlayout(1,2,'TileSpacing','compact');
+    title(t,'Threshold masks')
     
     t(1) = nexttile; hold on
     plt_data(x_regrid,y_regrid,condG_threshold_mask,lonlim,latlim,[],'cond(G) mask',fault_trace,borders)
