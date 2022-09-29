@@ -6,8 +6,8 @@
 
 %% load inputs
 
-vel_file1 = '/scratch/eearw/decomp_frame_vels/out/comparing_decomp_methods/decomp_vE_vU_east.tif';
-vel_file2 = '/scratch/eearw/decomp_frame_vels/out/comparing_decomp_methods/decomp_vE_vUN_east2.tif';
+vel_file1 = '/scratch/eearw/decomp_frame_vels/out/ref_method_comp/indiv_frames_east.geo.tif';
+vel_file2 = '/scratch/eearw/decomp_frame_vels/out/ref_method_comp/merged_tracks_east.geo.tif';
 
 [lon,lat,vel1,~,~] = read_geotiff(vel_file1);
 [~,~,vel2,~,~] = read_geotiff(vel_file2);

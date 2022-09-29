@@ -41,7 +41,7 @@ if par.decomp_method == 0
         vel(:,:,ii) = vel(:,:,ii) - gnss_Nlos;
 
         % propagate error on N
-        vstd(:,:,ii) = sqrt(vstd(:,:,ii).^2 + gnss_sN.^2);
+%         vstd(:,:,ii) = sqrt(vstd(:,:,ii).^2 + gnss_sN.^2);
     end   
 end
 

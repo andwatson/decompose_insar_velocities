@@ -44,6 +44,10 @@ disp('Loading parameter file')
 
 disp('Checking that data exists')
 
+if insarpar.ninsarfile == 0
+    error('No insar files provided - have you remembered to add "framedir:" before each path?')
+end
+
 to_remove = false(1,length(insarpar.dir));
 
 for ii = 1:length(insarpar.dir)
@@ -299,8 +303,8 @@ if par.tie2gnss ~= 0
     [xx_gnss,yy_gnss] = meshgrid(gnss_field.x,gnss_field.y);
     gnss_E = interp2(xx_gnss,yy_gnss,gnss_field.E,xx_regrid,yy_regrid);
     gnss_N = interp2(xx_gnss,yy_gnss,gnss_field.N,xx_regrid,yy_regrid);
-    gnss_sE = interp2(xx_gnss,yy_gnss,gnss_field.sE,xx_regrid,yy_regrid);
-    gnss_sN = interp2(xx_gnss,yy_gnss,gnss_field.sN,xx_regrid,yy_regrid);
+%     gnss_sE = interp2(xx_gnss,yy_gnss,gnss_field.sE,xx_regrid,yy_regrid);
+%     gnss_sN = interp2(xx_gnss,yy_gnss,gnss_field.sN,xx_regrid,yy_regrid);
 end
 
 % change zeros to nans
@@ -400,7 +404,8 @@ end
 %% reference frame bias correction
 % remove "reference frame bias" caused by rigid plate motions.
 
-if par.plate_motion == 1    
+if par.plate_motion == 1
+    disp('Applying plate motion correction')
     [vel_regrid] = plate_motion_bias(par,x_regrid,y_regrid,vel_regrid,...
         compE_regrid,compN_regrid,asc_frames_ind,desc_frames_ind);
 end
@@ -410,11 +415,12 @@ end
 % velocities. Method is given by par.tie2gnss. 
 
 if par.tie2gnss ~= 0
-    [vel_regrid] = ref_to_gnss(par,xx_regrid,yy_regrid,...
-        vel_regrid,compE_regrid,compN_regrid,gnss_E,gnss_N,frames);    
+    [vel_regrid] = ref_to_gnss(par,xx_regrid,yy_regrid,vel_regrid,...
+        compE_regrid,compN_regrid,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind);    
 end
 
-% calculate frame overlaps if requested
+%% calculate frame overlaps if requested
+
 if par.frame_overlaps == 1
     disp('Calculating frame overlap statistics')
     frame_overlap_stats(vel_regrid,frames,compU_regrid);
@@ -441,7 +447,7 @@ if par.decomp_method == 0 || par.decomp_method == 1
     % in the linear problem, and solve for vE, vU, and vN
     [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
         = vel_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
-        compU_regrid,gnss_N,gnss_sN,both_coverage);
+        compU_regrid,gnss_N,[],both_coverage);
 
 elseif par.decomp_method == 2
     

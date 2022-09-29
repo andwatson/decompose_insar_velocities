@@ -116,12 +116,15 @@ for ii = 1:length(unique_tracks)
             for jj = 1:length(track_ind)-1
                 
                 % calculate residual between overlap and remove nans           
-                overlap_resid = vel(:,:,track_ind(jj)) - vel(:,:,track_ind(jj+1));
+                overlap_resid = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
                 x_overlap = xx(~isnan(overlap_resid)); y_overlap = yy(~isnan(overlap_resid));
                 overlap_resid(isnan(overlap_resid)) = [];
                 
                 if isempty(overlap_resid)
-                    disp('No overlap, skipping')
+                    disp('No overlap, splitting into multiple segments')
+                    
+                    % save indexes of non-overlapping frames
+                    multi_segment = [multi_segment; jj jj+1];
                     continue
                 end
                 
@@ -130,7 +133,7 @@ for ii = 1:length(unique_tracks)
                 overlap_plane = m(1) + m(2).*xx + m(3).*yy;
                 
                 % apply offset
-                vel(:,:,track_ind(jj)) = vel(:,:,track_ind(jj)) - overlap_plane;
+                vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - overlap_plane;
                 
                 if par.plt_merge_along_resid == 1
                     overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
@@ -224,7 +227,7 @@ for ii = 1:length(unique_tracks)
     end
     
     % plot original velocities and merged result
-    if par.plt_merge_along_corr == 1
+    if par.plt_merge_along_corr == 2
         % plot original frames
         f1 = figure();
         tiledlayout(1,length(track_ind),'TileSpacing','compact')

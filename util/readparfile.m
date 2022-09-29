@@ -50,6 +50,7 @@ par.out_prefix = getparval(cfgcell,'out_prefix',[]);
 % tie to gnss
 par.tie2gnss = getparval(cfgcell,'tie2gnss',0);
 par.ref_poly_order = getparval(cfgcell,'ref_poly_order',[]);
+par.ref_filter_window_size = getparval(cfgcell,'ref_filter_window_size',[]);
 
 % use mask
 par.usemask = getparval(cfgcell,'usemask',0);
@@ -105,6 +106,9 @@ par.plt_plate_motion_indv = getparval(cfgcell,'plt_plate_motion_indv',0);
 % along track merge plotting
 par.plt_merge_along_corr = getparval(cfgcell,'plt_merge_along_corr',0);
 par.plt_merge_along_resid = getparval(cfgcell,'plt_merge_along_resid',0);
+
+% plot reference to gnss
+par.plt_ref_gnss_indv = getparval(cfgcell,'plt_ref_gnss_indv',0);
 
 % plot ascending and descending masks
 par.plt_mask_asc_desc = getparval(cfgcell,'plt_mask_asc_desc',0);
