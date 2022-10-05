@@ -70,6 +70,9 @@ par.merge_tracks_across = getparval(cfgcell,'merge_tracks_across',0);
 par.plate_motion = getparval(cfgcell,'plate_motion',0);
 par.plate_motion_file = getparval(cfgcell,'plate_motion_file',[]);
 
+% gnss uncertainty
+par.gnss_uncer = getparval(cfgcell,'gnss_uncer',0);
+
 % decomposition method
 par.decomp_method = getparval(cfgcell,'decomp_method',0);
 

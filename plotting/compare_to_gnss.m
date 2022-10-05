@@ -12,14 +12,15 @@ addpath ../util/
 %% setup
 
 % direction of velocities ['east' 'north' 'los']
-vel_direction = 'east';
+vel_direction = 'north';
 
 % distance threhold, in same coords as velocities (likely degrees)
-dist_threshold = 0.1;
+dist_or_nearest = 1; %0=dist, 1=nearest
+dist_threshold = 0.10;
 
 % fit some function to the gnss residuals
 fit_func_to_resid = 0;
-remove_offset = 1;
+remove_offset = 0;
 
 %% load
 
@@ -34,7 +35,7 @@ compN_file = [in_dir track '_compN.geo.tif'];
 % vel_file = [in_dir track '_vel.geo.tif'];
 % vel_file = '/scratch/eearw/decomp_frame_vels/out/2km_for_plotting/iran_gacos_ml2_vE.geo.tif';
 % vel_file = '/scratch/eearw/decomp_frame_vels/out/interp_test/iran_gacos_2km_vE.geo.tif';
-vel_file = '/scratch/eearw/kriging/out/khor_cleaned_extended/testing/ve_interpolated.mat';
+vel_file = '/scratch/eearw/kriging/out/khor_cleaned_extended/testing/vn_interpolated_synth2.mat';
 
 % change load method for tif and mat files
 [~,~,ext] = fileparts(vel_file);
@@ -109,12 +110,23 @@ resid(:,1:2) = gnss_vel(:,1:2);
 
 % loop through gnss
 for ii = 1:size(gnss,1)
-    
-    % distance from gnss
-    dist_from_gnss = sqrt((xx-gnss_vel(ii,1)).^2 + (yy-gnss_vel(ii,2)).^2);
-    
-    % residual
-    resid(ii,3) = gnss_vel(ii,3) - median(vel(dist_from_gnss<=dist_threshold),'omitnan');
+      
+    if dist_or_nearest == 0
+        % distance from gnss
+        dist_from_gnss = sqrt((xx-gnss_vel(ii,1)).^2 + (yy-gnss_vel(ii,2)).^2);
+
+        % residual
+        resid(ii,3) = gnss_vel(ii,3) - median(vel(dist_from_gnss<=dist_threshold),'omitnan');
+        
+        
+    elseif dist_or_nearest == 1
+        % nearest point
+        [~,ind_x] = min(abs(lon-gnss_vel(ii,1)));
+        [~,ind_y] = min(abs(lat-gnss_vel(ii,2)));
+        
+        resid(ii,3) = gnss_vel(ii,3) - vel(ind_y,ind_x);
+        
+    end
     
 end
 
@@ -131,11 +143,22 @@ if remove_offset == 1
     % loop through gnss
     for ii = 1:size(gnss,1)
 
-        % distance from gnss
-        dist_from_gnss = sqrt((xx-gnss_vel(ii,1)).^2 + (yy-gnss_vel(ii,2)).^2);
+        if dist_or_nearest == 0
+            % distance from gnss
+            dist_from_gnss = sqrt((xx-gnss_vel(ii,1)).^2 + (yy-gnss_vel(ii,2)).^2);
 
-        % residual
-        resid(ii,3) = gnss_vel(ii,3) - median(vel(dist_from_gnss<=dist_threshold),'omitnan');
+            % residual
+            resid(ii,3) = gnss_vel(ii,3) - median(vel(dist_from_gnss<=dist_threshold),'omitnan');
+
+
+        elseif dist_or_nearest == 1
+            % nearest point
+            [~,ind_x] = min(abs(lon-gnss_vel(ii,1)));
+            [~,ind_y] = min(abs(lat-gnss_vel(ii,2)));
+
+            resid(ii,3) = gnss_vel(ii,3) - vel(ind_y,ind_x);
+
+        end
 
     end
       

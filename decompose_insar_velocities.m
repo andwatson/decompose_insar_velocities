@@ -26,7 +26,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/thesis_ds.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/thesis.conf';
 
 % add subdirectory paths
 addpath util plotting
@@ -134,8 +134,11 @@ else
     fault_trace = [];
 end
 
-% gnss vels
+% gnss vels and check if uncertainties are present (if requested)
 load(par.gnss_file);
+if par.gnss_uncer == 1 && (~isfield(gnss_field,'sE') || ~isfield(gnss_field,'sN'))
+    error('Propagation of GNSS uncertainties requested, but GNSS mat file does not contain sE and sN')
+end
 
 % borders
 if par.plt_borders == 1
@@ -299,12 +302,20 @@ for ii = 1:nframes
     
 end
 
+% resample gnss
 if par.tie2gnss ~= 0
     [xx_gnss,yy_gnss] = meshgrid(gnss_field.x,gnss_field.y);
     gnss_E = interp2(xx_gnss,yy_gnss,gnss_field.E,xx_regrid,yy_regrid);
     gnss_N = interp2(xx_gnss,yy_gnss,gnss_field.N,xx_regrid,yy_regrid);
-%     gnss_sE = interp2(xx_gnss,yy_gnss,gnss_field.sE,xx_regrid,yy_regrid);
-%     gnss_sN = interp2(xx_gnss,yy_gnss,gnss_field.sN,xx_regrid,yy_regrid);
+    
+    % resample gnss uncertainties if using
+    if par.gnss_uncer == 1
+        gnss_sE = interp2(xx_gnss,yy_gnss,gnss_field.sE,xx_regrid,yy_regrid);
+        gnss_sN = interp2(xx_gnss,yy_gnss,gnss_field.sN,xx_regrid,yy_regrid);
+    else
+        gnss_sE = [];
+        gnss_sN = [];
+    end
 end
 
 % change zeros to nans
@@ -447,7 +458,7 @@ if par.decomp_method == 0 || par.decomp_method == 1
     % in the linear problem, and solve for vE, vU, and vN
     [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
         = vel_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
-        compU_regrid,gnss_N,[],both_coverage);
+        compU_regrid,gnss_N,gnss_sN,both_coverage);
 
 elseif par.decomp_method == 2
     

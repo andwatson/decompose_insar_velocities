@@ -41,7 +41,9 @@ if par.decomp_method == 0
         vel(:,:,ii) = vel(:,:,ii) - gnss_Nlos;
 
         % propagate error on N
-%         vstd(:,:,ii) = sqrt(vstd(:,:,ii).^2 + gnss_sN.^2);
+        if par.gnss_uncer == 1
+            vstd(:,:,ii) = sqrt(vstd(:,:,ii).^2 + gnss_sN.^2);
+        end
     end   
 end
 
@@ -58,10 +60,8 @@ vstd = reshape(vstd,[],nframes);
 compU = reshape(compU,[],nframes);
 compE = reshape(compE,[],nframes);
 compN = reshape(compN,[],nframes);
-if par.decomp_method == 1
-    gnss_N = gnss_N(:);
-    gnss_sN = gnss_sN(:);
-end
+if par.decomp_method == 1; gnss_N = gnss_N(:); end
+if par.gnss_uncer == 1; gnss_sN = gnss_sN(:); end
 
 % progress report interval
 report_it = round(size(vel,1)/10);
@@ -86,7 +86,11 @@ for ii = 1:size(vel,1)
         G = [compU(ii,:)' compE(ii,:)'];
         d = vel(ii,:)';
     else
-        Qd = diag([vstd(ii,:) gnss_sN(ii)]);
+        if par.gnss_uncer == 1
+            Qd = diag([vstd(ii,:) gnss_sN(ii)]);
+        else
+            Qd = diag([vstd(ii,:) ones(size(gnss_N(ii)))]);
+        end
         G = [[compU(ii,:)' compE(ii,:)' compN(ii,:)']; [0 0 1]];
         d = [vel(ii,:)'; gnss_N(ii)];
     end
