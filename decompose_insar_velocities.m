@@ -26,7 +26,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/thesis.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/test_20221006.conf';
 
 % add subdirectory paths
 addpath util plotting
