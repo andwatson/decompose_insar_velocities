@@ -23,34 +23,11 @@ function [track_vel,track_compE,track_compN,track_compU,track_vstd,unique_tracks
 %                                                                  
 %=================================================================
 
-%% get unique tracks, split by pass direction
-
-% get indices of ascending and descending frames (for if not merging)
-asc_frames_ind = find(cellfun(@(x) strncmp('A',x(4),4), frames));
-desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
+%% get unique tracks
 
 % get tracks from frame ids, removing duplicates
 tracks = cellfun(@(x) x(1:4), frames, 'UniformOutput', false);
 unique_tracks = unique(tracks);
-
-% pre-allocate
-unique_tracks_asc = cell(0); unique_tracks_desc = cell(0);
-unique_tracks_asc_ind = 1:length(unique_tracks); 
-unique_tracks_desc_ind = 1:length(unique_tracks); 
-
-% sort tracks by pass direction 
-for ii = 1:length(unique_tracks)
-    if unique_tracks{ii}(4) == 'A'
-        unique_tracks_asc{end+1} = unique_tracks{ii};
-        unique_tracks_desc_ind(ii) = 0;
-    elseif unique_tracks{ii}(4) == 'D'
-        unique_tracks_desc{end+1} = unique_tracks{ii};
-        unique_tracks_asc_ind(ii) = 0;
-    end
-end
-
-unique_tracks_asc_ind(unique_tracks_asc_ind==0) = [];
-unique_tracks_desc_ind(unique_tracks_desc_ind==0) = [];
 
 %% merge frames along-track
 
@@ -58,7 +35,11 @@ unique_tracks_desc_ind(unique_tracks_desc_ind==0) = [];
 track_vel = nan([size(vel,[1 2]) length(unique_tracks)]);
 track_compE = nan(size(track_vel)); track_compN = nan(size(track_vel));
 track_compU = nan(size(track_vel)); track_vstd = nan(size(track_vel));
-if plt_resid == 1; overlaps = cell(1,size(vel,3)); n_ov = 1; end
+if par.plt_merge_along_resid == 1; overlaps = cell(1,size(vel,3)); n_ov = 1; end
+
+% account for frames that merge into more than one veocity field as a 
+% result of empty overlaps
+ind_count = 1;
 
 % coords
 [xx,yy] = meshgrid(x,y);
@@ -66,10 +47,15 @@ if plt_resid == 1; overlaps = cell(1,size(vel,3)); n_ov = 1; end
 % loop through each track
 for ii = 1:length(unique_tracks)
     
-    disp(['Merging ' unique_tracks{ii}])
+    disp(['Merging ' unique_tracks{ind_count}])
     
     % get inds for frames on that track
-    track_ind = find(cellfun(@(x) strncmp(unique_tracks{ii},x,length(unique_tracks{ii})), tracks));
+    track_ind = find(cellfun(@(x) ...
+        strncmp(unique_tracks{ind_count},x,length(unique_tracks{ind_count})), tracks));
+    
+    % pre-allocate
+    multi_segment = zeros(length(track_ind),2);
+    multi_segment_ind = 1;
         
     switch par.merge_tracks_along_func
         case 0 % static offset
@@ -82,7 +68,11 @@ for ii = 1:length(unique_tracks)
                 overlap_resid(isnan(overlap_resid)) = [];
                 
                 if isempty(overlap_resid)
-                    disp('No overlap, skipping')
+                    disp('No overlap, splitting into multiple segments')
+                    
+                    % save indexes of non-overlapping frames
+                    multi_segment(multi_segment_ind,:) = [jj jj+1];
+                    multi_segment_ind = multi_segment_ind + 1;
                     continue
                 end
                 
@@ -93,7 +83,8 @@ for ii = 1:length(unique_tracks)
                 % apply offset
                 vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - m;
                 
-                if par.merge_along_plt_resid == 1
+                % save overlap for plotting
+                if par.plt_merge_along_resid == 1
                     overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
                     n_ov = n_ov + 1;
                 end
@@ -107,22 +98,28 @@ for ii = 1:length(unique_tracks)
             for jj = 1:length(track_ind)-1
                 
                 % calculate residual between overlap and remove nans           
-                overlap_resid = vel(:,:,track_ind(jj)) - vel(:,:,track_ind(jj+1));
+                overlap_resid = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
                 x_overlap = xx(~isnan(overlap_resid)); y_overlap = yy(~isnan(overlap_resid));
                 overlap_resid(isnan(overlap_resid)) = [];
                 
                 if isempty(overlap_resid)
-                    disp('No overlap, skipping')
+                    disp('No overlap, splitting into multiple segments')
+                    
+                    % save indexes of non-overlapping frames
+                    multi_segment(multi_segment_ind,:) = [jj jj+1];
+                    multi_segment_ind = multi_segment_ind + 1;
                     continue
                 end
                 
+                % solve lienar inverse for 1st order poly
                 G = [ones(length(x_overlap),1) x_overlap y_overlap];
                 m = (G'*G)^-1*G'*overlap_resid';
                 overlap_plane = m(1) + m(2).*xx + m(3).*yy;
                 
-                % apply offset
-                vel(:,:,track_ind(jj)) = vel(:,:,track_ind(jj)) - overlap_plane;
+                % apply plane
+                vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - overlap_plane;
                 
+                % save overlap for plotting
                 if par.plt_merge_along_resid == 1
                     overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
                     n_ov = n_ov + 1;
@@ -132,35 +129,97 @@ for ii = 1:length(unique_tracks)
             
     end
     
+    % remove unused rows
+    multi_segment(multi_segment(:,1)==0,:) = [];
+    
+    % plot residuals between overlaps
     if par.plt_merge_along_resid == 1
+        
+        % pre-al
         overlaps = overlaps(~cellfun('isempty',overlaps));
         overlap_stats = zeros(length(overlaps),2);
+        
+        % loop through overlaps
         for nn = 1:length(overlaps)
             figure(); tiledlayout(2,1,'TileSpacing','compact')
-            cropped_overlap = crop_nans(overlaps{nn});
-            nexttile(); imagesc(cropped_overlap); colorbar
+            [cropped_overlap,~,~,x_crop,y_crop] = crop_nans(overlaps{nn},x,y);
+            nexttile(); imagesc(x_crop,y_crop,cropped_overlap,'AlphaData',~isnan(cropped_overlap)); 
+            colorbar; axis xy
             nexttile(); histogram(overlaps{nn});
-            title(['Mean = ' num2str(mean(cropped_overlap(:),'omitnan')) ...
-                ', SD = ' num2str(std(cropped_overlap(:),'omitnan'))])
+            title(['Mean = ' num2str(round(mean(cropped_overlap(:),'omitnan'),2)) ...
+                ', SD = ' num2str(round(std(cropped_overlap(:),'omitnan'),2)) ...
+                'Median = ' num2str(round(median(cropped_overlap(:),'omitnan'),2))])
             overlap_stats(nn,:) = [mean(cropped_overlap(:),'omitnan') std(cropped_overlap(:),'omitnan')];
+        end
+        
+    end
+    
+    % merge frames in track into single velocity field
+    if par.merge_tracks_along == 2
+        
+        if isempty(multi_segment)
+            % take mean of overlap and store new vel
+            track_vel(:,:,ind_count) = mean(vel(:,:,track_ind),3,'omitnan');
+
+            % merge component vectors
+            track_compE(:,:,ind_count) = mean(compE(:,:,track_ind),3,'omitnan');
+            track_compN(:,:,ind_count) = mean(compN(:,:,track_ind),3,'omitnan');
+            track_compU(:,:,ind_count) = mean(compU(:,:,track_ind),3,'omitnan');
+
+            % merge pixel uncertainties
+            track_vstd(:,:,ind_count) = mean(vstd(:,:,track_ind),3,'omitnan');
+            
+        else
+            % number of segments
+            n_seg = size(multi_segment,1) + 1;
+            
+            % convert multi_segment to indexes
+            multi_segment = [1; multi_segment(:); length(track_ind)];
+            
+            % add extra layers onto track arrays
+            track_vel = cat(3,track_vel,nan([size(vel,[1 2]) n_seg-1]));
+            track_compE = cat(3,track_compE,nan([size(vel,[1 2]) n_seg-1]));
+            track_compN = cat(3,track_compN,nan([size(vel,[1 2]) n_seg-1]));
+            track_compU = cat(3,track_compU,nan([size(vel,[1 2]) n_seg-1]));
+            track_vstd = cat(3,track_vstd,nan([size(vel,[1 2]) n_seg-1]));
+            
+            % duplicate track name
+            repelem_vec = ones(1,length(unique_tracks));
+            repelem_vec(ind_count) = n_seg;
+            unique_tracks = repelem(unique_tracks,repelem_vec);
+            
+            % save segments to different array layers
+            ind_count_inc = 0;
+            for kk = 1:2:length(multi_segment)
+                
+                % take mean of subset of frames on track
+                track_vel(:,:,ind_count+ind_count_inc) ...
+                    = mean(vel(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                
+                track_compE(:,:,ind_count+ind_count_inc) ...
+                    = mean(compE(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                track_compN(:,:,ind_count+ind_count_inc) ...
+                    = mean(compN(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                track_compU(:,:,ind_count+ind_count_inc) ...
+                    = mean(compU(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                
+                track_vstd(:,:,ind_count+ind_count_inc) ...
+                    = mean(vstd(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                
+                % increment counter
+                ind_count_inc = ind_count_inc + 1;
+                
+            end
+            
+            % increment counter
+            ind_count = ind_count + (n_seg-1);
+            
         end
     end
     
-    if par.merge_tracks_along == 2
-        % take mean of overlap and store new vel
-        track_vel(:,:,ii) = mean(vel(:,:,track_ind),3,'omitnan');
-
-        % merge component vectors
-        track_compE(:,:,ii) = mean(compE(:,:,track_ind),3,'omitnan');
-        track_compN(:,:,ii) = mean(compN(:,:,track_ind),3,'omitnan');
-        track_compU(:,:,ii) = mean(compU(:,:,track_ind),3,'omitnan');
-
-        % merge pixel uncertainties
-        track_vstd(:,:,ii) = mean(vstd(:,:,track_ind),3,'omitnan');
-    end
-    
-    
-    if par.plt_merge_along_corr == 1
+    % plot original velocities and merged result
+    if par.plt_merge_along_corr == 2
+        
         % plot original frames
         f1 = figure();
         tiledlayout(1,length(track_ind),'TileSpacing','compact')
@@ -188,10 +247,14 @@ for ii = 1:length(unique_tracks)
         axis xy
 
         waitfor(f1); waitfor(f2)
+        
     end
     
     % report progress
-    disp([num2str(ii) '/' num2str(length(unique_tracks)) ' complete'])
+    disp([num2str(ind_count) '/' num2str(length(unique_tracks)) ' complete'])
+    
+    % increment
+    ind_count = ind_count + 1;
     
 end
 
@@ -199,28 +262,15 @@ end
 if par.merge_tracks_along == 1
     track_vel = vel; track_vstd = vstd;
     track_compE = compE; track_compN = compN; track_compU = compU;
-    unique_tracks_asc_ind = asc_frames_ind; unique_tracks_desc_ind = desc_frames_ind;
 end
-
-%% deramp
-
-% if range_deramp == 1
-%     for ii = 1:size(track_vel,3)  
-% 
-%         % deramp with fixed heading angle
-%         if ismember(ii,unique_tracks_asc_ind)
-%             theta = 13;
-%         else
-%             theta = -13;
-%         end
-%         track_vel(:,:,ii) = deramp_fixed_heading(x,y,track_vel(:,:,ii),theta);
-% 
-%     end
-% end
 
 %% plot merged tracks
 
 if par.plt_merge_tracks == 1
+    
+    % asc and desc indices
+    unique_tracks_asc_ind = find(cellfun(@(x) strncmp('A',x(4),4), unique_tracks));
+    unique_tracks_desc_ind = find(cellfun(@(x) strncmp('D',x(4),4), unique_tracks));
     
     % set plotting parameters
     lonlim = [min(x) max(x)];
@@ -237,7 +287,8 @@ if par.plt_merge_tracks == 1
     
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
-    tiledlayout(1,2,'TileSpacing','compact')
+    t = tiledlayout(1,2,'TileSpacing','compact');
+    title(t,'Along-track merge')
     
     % plot ascending tracks
     t(1) = nexttile; hold on
@@ -252,4 +303,3 @@ if par.plt_merge_tracks == 1
 end
 
 end
- 
