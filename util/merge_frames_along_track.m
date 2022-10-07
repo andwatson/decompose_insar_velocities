@@ -23,34 +23,11 @@ function [track_vel,track_compE,track_compN,track_compU,track_vstd,unique_tracks
 %                                                                  
 %=================================================================
 
-%% get unique tracks, split by pass direction
-
-% get indices of ascending and descending frames (for if not merging)
-asc_frames_ind = find(cellfun(@(x) strncmp('A',x(4),4), frames));
-desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
+%% get unique tracks
 
 % get tracks from frame ids, removing duplicates
 tracks = cellfun(@(x) x(1:4), frames, 'UniformOutput', false);
 unique_tracks = unique(tracks);
-
-% pre-allocate
-% unique_tracks_asc = cell(0); unique_tracks_desc = cell(0);
-unique_tracks_asc_ind = 1:length(unique_tracks); 
-unique_tracks_desc_ind = 1:length(unique_tracks); 
-
-% sort tracks by pass direction 
-for ii = 1:length(unique_tracks)
-    if unique_tracks{ii}(4) == 'A'
-%         unique_tracks_asc{end+1} = unique_tracks{ii};
-        unique_tracks_desc_ind(ii) = 0;
-    elseif unique_tracks{ii}(4) == 'D'
-%         unique_tracks_desc{end+1} = unique_tracks{ii};
-        unique_tracks_asc_ind(ii) = 0;
-    end
-end
-
-unique_tracks_asc_ind(unique_tracks_asc_ind==0) = [];
-unique_tracks_desc_ind(unique_tracks_desc_ind==0) = [];
 
 %% merge frames along-track
 
@@ -63,7 +40,6 @@ if par.plt_merge_along_resid == 1; overlaps = cell(1,size(vel,3)); n_ov = 1; end
 % account for frames that merge into more than one veocity field as a 
 % result of empty overlaps
 ind_count = 1;
-multi_segment = [];
 
 % coords
 [xx,yy] = meshgrid(x,y);
@@ -76,6 +52,10 @@ for ii = 1:length(unique_tracks)
     % get inds for frames on that track
     track_ind = find(cellfun(@(x) ...
         strncmp(unique_tracks{ind_count},x,length(unique_tracks{ind_count})), tracks));
+    
+    % pre-allocate
+    multi_segment = zeros(length(track_ind),2);
+    multi_segment_ind = 1;
         
     switch par.merge_tracks_along_func
         case 0 % static offset
@@ -91,7 +71,8 @@ for ii = 1:length(unique_tracks)
                     disp('No overlap, splitting into multiple segments')
                     
                     % save indexes of non-overlapping frames
-                    multi_segment = [multi_segment; jj jj+1];
+                    multi_segment(multi_segment_ind,:) = [jj jj+1];
+                    multi_segment_ind = multi_segment_ind + 1;
                     continue
                 end
                 
@@ -102,6 +83,7 @@ for ii = 1:length(unique_tracks)
                 % apply offset
                 vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - m;
                 
+                % save overlap for plotting
                 if par.plt_merge_along_resid == 1
                     overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
                     n_ov = n_ov + 1;
@@ -124,17 +106,20 @@ for ii = 1:length(unique_tracks)
                     disp('No overlap, splitting into multiple segments')
                     
                     % save indexes of non-overlapping frames
-                    multi_segment = [multi_segment; jj jj+1];
+                    multi_segment(multi_segment_ind,:) = [jj jj+1];
+                    multi_segment_ind = multi_segment_ind + 1;
                     continue
                 end
                 
+                % solve lienar inverse for 1st order poly
                 G = [ones(length(x_overlap),1) x_overlap y_overlap];
                 m = (G'*G)^-1*G'*overlap_resid';
                 overlap_plane = m(1) + m(2).*xx + m(3).*yy;
                 
-                % apply offset
+                % apply plane
                 vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - overlap_plane;
                 
+                % save overlap for plotting
                 if par.plt_merge_along_resid == 1
                     overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
                     n_ov = n_ov + 1;
@@ -144,8 +129,12 @@ for ii = 1:length(unique_tracks)
             
     end
     
+    % remove unused rows
+    multi_segment(multi_segment(:,1)==0,:) = [];
+    
     % plot residuals between overlaps
     if par.plt_merge_along_resid == 1
+        
         % pre-al
         overlaps = overlaps(~cellfun('isempty',overlaps));
         overlap_stats = zeros(length(overlaps),2);
@@ -162,6 +151,7 @@ for ii = 1:length(unique_tracks)
                 'Median = ' num2str(round(median(cropped_overlap(:),'omitnan'),2))])
             overlap_stats(nn,:) = [mean(cropped_overlap(:),'omitnan') std(cropped_overlap(:),'omitnan')];
         end
+        
     end
     
     % merge frames in track into single velocity field
@@ -216,11 +206,12 @@ for ii = 1:length(unique_tracks)
                 track_vstd(:,:,ind_count+ind_count_inc) ...
                     = mean(vstd(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
                 
+                % increment counter
                 ind_count_inc = ind_count_inc + 1;
                 
             end
             
-            % increment
+            % increment counter
             ind_count = ind_count + (n_seg-1);
             
         end
@@ -228,6 +219,7 @@ for ii = 1:length(unique_tracks)
     
     % plot original velocities and merged result
     if par.plt_merge_along_corr == 2
+        
         % plot original frames
         f1 = figure();
         tiledlayout(1,length(track_ind),'TileSpacing','compact')
@@ -255,6 +247,7 @@ for ii = 1:length(unique_tracks)
         axis xy
 
         waitfor(f1); waitfor(f2)
+        
     end
     
     % report progress
@@ -263,16 +256,12 @@ for ii = 1:length(unique_tracks)
     % increment
     ind_count = ind_count + 1;
     
-    % reset to empty for next track
-    multi_segment = [];
-    
 end
 
 % if not merging overlaps, then duplicate variables for output
 if par.merge_tracks_along == 1
     track_vel = vel; track_vstd = vstd;
     track_compE = compE; track_compN = compN; track_compU = compU;
-    unique_tracks_asc_ind = asc_frames_ind; unique_tracks_desc_ind = desc_frames_ind;
 end
 
 %% plot merged tracks
@@ -314,4 +303,3 @@ if par.plt_merge_tracks == 1
 end
 
 end
- 

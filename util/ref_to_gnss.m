@@ -3,6 +3,14 @@ function [vel] = ref_to_gnss(par,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_
 % function ref_to_gnss()
 %-----------------------------------------------------------------
 % Tie InSAR velocities into a GNSS refernce frame.
+% Largely based on the method from Weiss et al. (2020).
+% Main steps are:
+%   - interpolate GNSS stations velocities into continuous fields
+%       (provided as an input)
+%   - project GNSS into LOS for each frame/track
+%   - calculate residual between InSAR and GNSS
+%   - either fit a polynomial to the residual, or apply a filter
+%   - subtract this smoothed difference from the InSAR
 %                                                                  
 % INPUT:                                                           
 %   par: parameter structure from readparfile.
@@ -10,6 +18,8 @@ function [vel] = ref_to_gnss(par,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_
 %   vel: regridded velocities (3D array)
 %   compE, compN, compU: regridded component vectors (3D arrays)
 %   vstd: regridded velocity uncertainties
+%   asc_frames_ind, desc_frames_ind: indices for ascending and descending
+%       frames/tracks
 % OUTPUT:    
 %   vel: velocities in GNSS reference system
 %   
@@ -39,17 +49,13 @@ for ii = 1:nframes
     vel_tmp = vel(:,:,ii);
     
     % mask after deramping (deramp isn't carried forward)
+    % use a hardcoded 10 mm/yr limit to remove large signals (mainly
+    % subsidence and seismic)
     vel_deramp = deramp(x,y,vel_tmp);
-%     vel_mask = vel_deramp>(mean(vel_deramp(:),'omitnan')+std(vel_deramp(:))) ...
-%         | vel_deramp<(mean(vel_deramp(:),'omitnan')-std(vel_deramp(:),'omitnan'));
-    
     vel_deramp = vel_deramp - mean(vel_deramp(:),'omitnan');
     vel_mask = vel_deramp>10 | vel_deramp<-10;
     
     vel_tmp(vel_mask) = nan;
-    
-%     vel_tmp(vel_tmp>mean(vel_tmp(:),'omitnan')+std(vel_tmp(:),'omitnan')) = nan;
-%     vel_tmp(vel_tmp<mean(vel_tmp(:),'omitnan')-std(vel_tmp(:),'omitnan')) = nan;
 
     gnss_resid = vel_tmp - gnss_los;
     
@@ -99,8 +105,9 @@ for ii = 1:nframes
             gnss_resid_filtered = ndnanfilter(gnss_resid,'rectwin',windsize);
             
             % reapply nans
-%             gnss_resid_filtered(isnan(gnss_resid)) = nan;
+            gnss_resid_filtered(isnan(gnss_resid)) = nan;
             
+            % store
             gnss_resid_plane(:,:,ii) = gnss_resid_filtered;
             
     end
@@ -131,8 +138,7 @@ for ii = 1:nframes
         
         f = figure();
         f.Position([1 3 4]) = [600 1600 600];
-        t = tiledlayout(1,3,'TileSpacing','compact');
-%         title(t,frames{ii})
+        tiledlayout(1,3,'TileSpacing','compact');
 
         nexttile; hold on
         imagesc(x,y,vel_orig,'AlphaData',~isnan(vel_orig)); axis xy
@@ -154,6 +160,8 @@ for ii = 1:nframes
         
     end
     
+    % report progress
+    disp([num2str(ii) '/' num2str(nframes) ' complete'])
 
 end
 

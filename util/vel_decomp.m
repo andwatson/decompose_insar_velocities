@@ -7,15 +7,25 @@ function [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] .
 % North component is provided by interpolated GNSS.
 %                                                                  
 % INPUT:                                                           
-%   par: 
+%   par: parameter structure from readparfile.
+%   vel: regridded velocities (3D array)
+%   vstd: regridded velocity uncertainties
+%   compE, compN, compU: regridded component vectors (3D arrays)
+%   gnss_N, gnss_sN: north GNSS velocities and associated uncertainties (2D
+%       arrays)
+%   both_coverage: logical array true where point has at least one
+%       ascending and descending velocity
 % OUTPUT:    
-%   track_vel: 
+%   m_east: decomposed east velocities (2D array)
+%   m_up: descomposed vertical velocities
+%   var_east: east uncertainty
+%   var_up: vertical uncertainty
+%   condG_threshold_mask: cond(G) mask (2D array)
+%   var_threshold_mask: variance mask
 %   
 % Andrew Watson     07-06-2022
 %                                                                  
 %=================================================================
-
-method = 0;
 
 %% setup
 
@@ -135,9 +145,3 @@ disp([num2str(sum(condG_threshold_mask,'all')) '/' num2str(npixels) ...
 disp([num2str(sum(var_threshold_mask,'all')) '/' num2str(npixels) ...
     ' (' num2str(round(sum(var_threshold_mask,'all')/npixels*100),2) ...
     '%) points were masked by the model variance threshold.'])
-
-% reshape back to 3D arrays
-% vel = reshape(vel,[rowcol nframes]);
-% vstd = reshape(vstd,[rowcol nframes]);
-% compU = reshape(compU,[rowcol nframes]);
-% compE = reshape(compE,[rowcol nframes]);

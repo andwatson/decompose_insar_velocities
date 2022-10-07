@@ -8,9 +8,21 @@ function [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] .
 % using the North GNSS velocitiy.
 %                                                                  
 % INPUT:                                                           
-%   par: 
+%   par: parameter structure from readparfile.
+%   vel: regridded velocities (3D array)
+%   vstd: regridded velocity uncertainties
+%   compE, compN, compU: regridded component vectors (3D arrays)
+%   gnss_N, gnss_sN: north GNSS velocities and associated uncertainties (2D
+%       arrays)
+%   both_coverage: logical array true where point has at least one
+%       ascending and descending velocity
 % OUTPUT:    
-%   track_vel: 
+%   m_east: decomposed east velocities (2D array)
+%   m_up: descomposed vertical velocities
+%   var_east: east uncertainty
+%   var_up: vertical uncertainty
+%   condG_threshold_mask: cond(G) mask (2D array)
+%   var_threshold_mask: variance mask
 %   
 % Andrew Watson     12-09-2022
 %                                                                  
@@ -109,6 +121,14 @@ for ii = 1:size(vel,1)
     
 end
 
+% report number of points removed.
+disp([num2str(sum(condG_threshold_mask,'all')) '/' num2str(npixels) ...
+    ' (' num2str(round(sum(condG_threshold_mask,'all')/npixels*100),2) ...
+    '%) points were masked by the cond(G) threshold.'])
+disp([num2str(sum(var_threshold_mask,'all')) '/' num2str(npixels) ...
+    ' (' num2str(round(sum(var_threshold_mask,'all')/npixels*100),2) ...
+    '%) points were masked by the model variance threshold.'])
+
 %% decompose vUN into vU and vN
 
 % estimate vU for all frames/tracks
@@ -124,3 +144,5 @@ var_up = sqrt((var_UN.^2 .* UN2U_var) + (gnss_sN .* N2U_var));
 % take the weighted mean
 m_up = sum(m_up.*(1./var_up),3,'omitnan') ./ sum((1./var_up),3,'omitnan');
 var_up = sum(var_up.^2,3,'omitnan') ./ sum(var_up,3,'omitnan');
+
+

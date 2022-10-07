@@ -6,6 +6,9 @@ function [vel] = plate_motion_bias(par,x,y,vel,compE,compN,asc_frames_ind,desc_f
 % subtracting No-Net-Rotation plate motion in ITRF from the LOS
 % velocities.
 %
+% The input plate motions can be generated using the UNAVCO plate motion
+% calculator, using ITRF2014 and No-Net-Rotation.
+%
 % The input plate motion vector file should contain (at least) the
 % following columns in positions 1-4 : lon, lat, East vel, North vel.
 %                                                                  
@@ -95,6 +98,9 @@ for ii = 1:size(vel,3)
         title('InSAR - plate')
         
     end
+    
+    % report progress
+    disp([num2str(ii) '/' num2str(size(vel,3)) ' complete'])
     
 end
 

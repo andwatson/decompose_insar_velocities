@@ -1,32 +1,27 @@
 %% decompose_insar_velocities.m
 %
-% A continuation of the original merge_all_NEU scripts, designed to work
-% with any number of input frames (not just the original 5 mrf ones).
+% Decomposes line-of-sight velocities (primarily from LiCSBAS into a
+% combination of North, East, and Up velocities, assuming no covariance
+% between adjacent pixels. All frames are interpolated onto a new grid.
 %
-% The setup is now done with a parameter file for flexibility.
+% InSAR velocities may be referenced to a GNSS velocity field (tie2gnss)
+% via various methods, and then decomposed into East and Vertical
+% components.
 %
-% Decomposes line-of-sight velocities from LiCSBAS into a combination of
-% North, East, and Up velocities, assuming no covariance between adjacent
-% pixels. All frames are interpolated onto a new grid.
+% Functions are include to correct for plate motion bias, to merge LOS
+% velocities along-track, and to perform downsampling.
 %
-% InSAR velocities may be referenced to a GNSS velocity field (tie2gnss).
-% The North GNSS velocities are subtracted from the InSAR velocities before
-% the decomposition is performed.
+% All options and inputs are read from a config file, an example for which
+% can be found in this directory.
 %
-% GNSS file should be a .mat file containing structure with the following:
-%   gnss_field.x - vector of x axis coords (n)
-%   gnss_field.y - vector of y axis coords (m)
-%   gnss_field.N - grid of north gnss vels (mxn)
-%   gnss_field.E - grid of east gnss vels (mxn)
-% Optional extras:
-%   gnss_field.sN - grid of north 1-sigma uncertainties (mxn)
-%   gnss_field.sE - grid of east 1-sigma uncertainties (mxn)
+% File formats can be found in the README and in the headers of each
+% script.
 %
-% Andrew Watson     26-04-2021
+% Andrew Watson     26-04-2021 (Original version)
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/test_20221006.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/thesis_ds_nosarpol.conf';
 
 % add subdirectory paths
 addpath util plotting
@@ -42,12 +37,13 @@ disp('Loading parameter file')
 
 %% check that inputs exist
 
-disp('Checking that data exists')
+disp('Checking that the requested inputs exist')
 
 if insarpar.ninsarfile == 0
     error('No insar files provided - have you remembered to add "framedir:" before each path?')
 end
 
+% pre-allocate
 to_remove = false(1,length(insarpar.dir));
 
 for ii = 1:length(insarpar.dir)
@@ -55,7 +51,7 @@ for ii = 1:length(insarpar.dir)
     % get name of velocity file
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_vel '*']);
     
-    % test existance, record if config file if missing
+    % test existance and record directory if no file exists
     if isempty(namestruct)   
         disp(['Removing ' insarpar.dir{ii}])
         to_remove(ii) = true;        
@@ -134,7 +130,7 @@ else
     fault_trace = [];
 end
 
-% gnss vels and check if uncertainties are present (if requested)
+% laod gnss vels and check if uncertainties are present (if requested)
 load(par.gnss_file);
 if par.gnss_uncer == 1 && (~isfield(gnss_field,'sE') || ~isfield(gnss_field,'sN'))
     error('Propagation of GNSS uncertainties requested, but GNSS mat file does not contain sE and sN')
@@ -147,7 +143,7 @@ else
     borders = [];
 end
 
-% colour palettes
+% colour palettes  (https://www.fabiocrameri.ch/colourmaps/)
 load('plotting/cpt/vik.mat')
 load('plotting/cpt/batlow.mat')
 
@@ -155,12 +151,14 @@ load('plotting/cpt/batlow.mat')
 
 if par.plt_input_vels == 1
     
+    disp('Plotting preview of input velocities')
+    
     % set plotting parameters
     lonlim = [min(cellfun(@min,lon)) max(cellfun(@max,lon))]; 
     latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))]; 
     clim = [-10 10];
     
-    % temp apply mask
+    % temporarily apply mask for plotting
     vel_tmp = vel;
     for ii = 1:nframes
         vel_tmp{ii}(mask{ii}==0) = nan;
@@ -212,11 +210,13 @@ for ii = 1:nframes
 
 end
 
+disp('Done')
+
 %% downsample
 
 if par.ds_factor > 0
     
-    disp(['Downsampling by a factor of ' num2str(par.ds_factor)])
+    disp(['Downsampling inputs by a factor of ' num2str(par.ds_factor)])
     
     for ii = 1:nframes
     
@@ -295,7 +295,8 @@ for ii = 1:nframes
     compU_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
         = interp2(xx,yy,compU{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
         yy_regrid(yind_min:yind_max,xind_min:xind_max));
-      
+    
+    % report progress
     if (mod(ii,round(nframes./10))) == 0
         disp([num2str(round((ii./nframes)*100)) '% completed']);
     end
@@ -327,22 +328,18 @@ compU_regrid(compU_regrid==0) = nan;
 % clear ungridded data
 clear vel vstd compE compN compU
 
+disp('Grid unification complete')
+
 %% apply mask
 
 if par.usemask == 1
     
     disp('Applying mask')
     
-    mask_regrid(isnan(mask_regrid)) = 0;
-    
     % account for previous downsampling
+    mask_regrid(isnan(mask_regrid)) = 0;
     mask_regrid(mask_regrid>=0.5) = 1; mask_regrid(mask_regrid<0.5) = 0;
-    
     vel_regrid(mask_regrid==0) = NaN;
-    
-%     for ii=1:nframes
-%         vel{ii}(mask{ii}==0) = nan;
-%     end
 
 end
 
@@ -352,6 +349,8 @@ end
 % at least one of the masks.
 
 if par.plt_mask_asc_desc == 1
+    
+    disp('Plotting ascending and descending masks')
     
     % look direction indices
     asc_frames_ind = find(cellfun(@(x) strncmp('A',x(4),4), frames));
@@ -426,6 +425,7 @@ end
 % velocities. Method is given by par.tie2gnss. 
 
 if par.tie2gnss ~= 0
+    disp('Referencing InSAR to interpolated GNSS velocities')
     [vel_regrid] = ref_to_gnss(par,xx_regrid,yy_regrid,vel_regrid,...
         compE_regrid,compN_regrid,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind);    
 end
@@ -445,7 +445,7 @@ both_coverage = all(cat(3,asc_coverage,desc_coverage),3);
 
 %% velocity decomposition
 
-disp('Inverting for E and U')
+disp('Performing velocity decomposition')
 
 % check that at least one point has at least two look directions
 if sum(both_coverage(:)) == 0
@@ -456,6 +456,7 @@ if par.decomp_method == 0 || par.decomp_method == 1
     
     % either remove gnss N, and decompose into vE and vU, or include gnss N
     % in the linear problem, and solve for vE, vU, and vN
+    disp('Solving directly for vE and vU')
     [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
         = vel_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
         compU_regrid,gnss_N,gnss_sN,both_coverage);
@@ -464,15 +465,15 @@ elseif par.decomp_method == 2
     
     % decompose into vE and vUN, then split vUN into vU and vN (Qi's
     % method)
+    disp('Solving for vE and vNU as intermediary step')
     [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
         = vel_decomp_vE_vUN(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
         compU_regrid,gnss_N,gnss_sN,both_coverage);    
 end
-    
-% [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
-%     = null_line_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,compU_regrid,both_coverage,asc_frames_ind,desc_frames_ind);
 
 %% plot output velocities
+
+disp('Plotting decomposed velocities')
 
 lonlim = [min(x_regrid) max(x_regrid)];
 latlim = [min(y_regrid) max(y_regrid)];
@@ -508,6 +509,8 @@ plt_data(x_regrid,y_regrid,coverage,lonlim,latlim,[],'Data coverage',fault_trace
 %% plot velocity uncertainties
 
 if par.plt_decomp_uncer == 1
+    
+    disp('Plotting decomposed velocity uncertainties')
 
     lonlim = [min(x_regrid) max(x_regrid)];
     latlim = [min(y_regrid) max(y_regrid)];
@@ -532,6 +535,8 @@ end
 
 if par.plt_threshold_masks == 1
     
+    disp('Plotting cond(G) and variance masks')
+    
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
     t = tiledlayout(1,2,'TileSpacing','compact');
@@ -548,6 +553,11 @@ end
 %% save outputs
 
 if par.save_geotif == 1
+    
+    disp('Saving the following outputs:')
+    disp([par.out_path par.out_prefix '_vU.geo.tif'])
+    disp([par.out_path par.out_prefix '_vE.geo.tif'])
+    disp([par.out_path par.out_prefix '_vN.geo.tif'])
     
     % create georeference
     georef = georefpostings([min(y_regrid) max(y_regrid)],...
