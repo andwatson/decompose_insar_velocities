@@ -20,6 +20,12 @@ function plt_data(lon,lat,data,lonlim,latlim,clim,titlestr,fault_trace,borders)
 
 hold on
 
+% sparse conversion if required
+if issparse(data)
+    data = full(data);
+    data(data==0) = nan;
+end
+
 % plot input data
 if iscell(data) % if cell array
     for ii = 1:length(data)

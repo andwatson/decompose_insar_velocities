@@ -265,9 +265,8 @@ dx = min(cellfun(@min,dx)); dy = min(cellfun(@min,dy));
 for ii = 1:nframes
     
     % pre-allocate zeros for sparse
-    % mask is pre-al'd as nans for indexing
     vel_regrid_loop = zeros(size(xx_regrid));
-    vstd_regrid_loop = zeros(size(xx_regrid)); mask_regrid_loop = nan(size(xx_regrid));
+    vstd_regrid_loop = zeros(size(xx_regrid)); mask_regrid_loop = zeros(size(xx_regrid));
     compE_regrid_loop = zeros(size(xx_regrid)); compN_regrid_loop = zeros(size(xx_regrid));
     compU_regrid_loop = zeros(size(xx_regrid));
     
@@ -310,23 +309,15 @@ for ii = 1:nframes
         mask_regrid_loop(mask_regrid_loop<0.5) = 0;
         
         % apply to other arrays
-        vel_regrid_loop(mask_regrid_loop==0) = nan;
-        vstd_regrid_loop(mask_regrid_loop==0) = nan;
-        compE_regrid_loop(mask_regrid_loop==0) = nan;
-        compN_regrid_loop(mask_regrid_loop==0) = nan;
-        compU_regrid_loop(mask_regrid_loop==0) = nan;
-        
-        % return nans to zeros for sparse
-        mask_regrid_loop(isnan(mask_regrid_loop)) = 0;
     end
     
     % make sure all nans are converted to zeros
-%     vel_regrid_loop(isnan(vel_regrid_loop)) = 0;
-%     vstd_regrid_loop(isnan(vstd_regrid_loop)) = 0;
-%     mask_regrid_loop(isnan(mask_regrid_loop)) = 0;
-%     compE_regrid_loop(isnan(compE_regrid_loop)) = 0;
-%     compN_regrid_loop(isnan(compN_regrid_loop)) = 0;
-%     compU_regrid_loop(isnan(compU_regrid_loop)) = 0;
+    vel_regrid_loop(isnan(vel_regrid_loop)) = 0;
+    vstd_regrid_loop(isnan(vstd_regrid_loop)) = 0;
+    mask_regrid_loop(isnan(mask_regrid_loop)) = 0;
+    compE_regrid_loop(isnan(compE_regrid_loop)) = 0;
+    compN_regrid_loop(isnan(compN_regrid_loop)) = 0;
+    compU_regrid_loop(isnan(compU_regrid_loop)) = 0;
     
     % combine into sparse arrays
     if ii == 1
@@ -372,6 +363,19 @@ end
 clear vel vstd compE compN compU
 
 disp('Grid unification complete')
+
+%% apply mask
+
+if par.usemask == 1
+    
+    disp('Applying mask')
+    
+    % account for previous downsampling
+%     mask_regrid(isnan(mask_regrid)) = 0;
+    mask_regrid(mask_regrid>=0.5) = 1; mask_regrid(mask_regrid<0.5) = 0;
+%     vel_regrid(mask_regrid==0) = NaN;
+
+end
 
 %% plot ascending and descending masks
 % Produces two masks that are useful for plotting.

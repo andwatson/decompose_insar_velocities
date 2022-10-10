@@ -65,8 +65,7 @@ for ii = 1:length(unique_tracks)
                 
                 % convert from sparse to full for ease
                 vel2 = full(vel(:,:,track_ind(jj+1)));
-                vel1 = full(vel(:,:,track_ind(jj)));                
-                vel2(vel2==0) = nan; vel1(vel1==0) = nan; 
+                vel1 = full(vel(:,:,track_ind(jj)));
                 
                 % calculate residual between overlap and remove nans     
                 overlap_resid = vel2 - vel1;
@@ -87,8 +86,10 @@ for ii = 1:length(unique_tracks)
                 m = (G'*G)^-1*G'*overlap_resid(:);
                 
                 % apply offset
-%                 vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - m;
-                vel(:,:,track_ind(jj+1)) = spfun(@(x) x-m,vel(:,:,track_ind(jj+1)));
+                vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - m;
+                
+                % reset any values that were zero
+                
                 
                 % save overlap for plotting
                 if par.plt_merge_along_resid == 1
@@ -104,13 +105,8 @@ for ii = 1:length(unique_tracks)
             % loop through adjcent pairings along-track
             for jj = 1:length(track_ind)-1
                 
-                % convert from sparse to full for ease
-                vel2 = full(vel(:,:,track_ind(jj+1)));
-                vel1 = full(vel(:,:,track_ind(jj)));                
-                vel2(vel2==0) = nan; vel1(vel1==0) = nan; 
-                
                 % calculate residual between overlap and remove nans           
-                overlap_resid = vel2 - vel1;
+                overlap_resid = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
                 x_overlap = xx(~isnan(overlap_resid)); y_overlap = yy(~isnan(overlap_resid));
                 overlap_resid(isnan(overlap_resid)) = [];
                 
@@ -129,8 +125,7 @@ for ii = 1:length(unique_tracks)
                 overlap_plane = m(1) + m(2).*xx + m(3).*yy;
                 
                 % apply plane
-%                 vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - overlap_plane;
-                vel(:,:,track_ind(jj+1)) = spfun(@(x) x-overlap_plane,vel(:,:,track_ind(jj+1)));
+                vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - overlap_plane;
                 
                 % save overlap for plotting
                 if par.plt_merge_along_resid == 1
@@ -172,15 +167,15 @@ for ii = 1:length(unique_tracks)
         
         if isempty(multi_segment)
             % take mean of overlap and store new vel
-            track_vel(:,:,ind_count) = mean(full_nan(vel(:,:,track_ind)),3,'omitnan');
+            track_vel(:,:,ind_count) = mean(vel(:,:,track_ind),3,'omitnan');
 
             % merge component vectors
-            track_compE(:,:,ind_count) = mean(full_nan(compE(:,:,track_ind)),3,'omitnan');
-            track_compN(:,:,ind_count) = mean(full_nan(compN(:,:,track_ind)),3,'omitnan');
-            track_compU(:,:,ind_count) = mean(full_nan(compU(:,:,track_ind)),3,'omitnan');
+            track_compE(:,:,ind_count) = mean(compE(:,:,track_ind),3,'omitnan');
+            track_compN(:,:,ind_count) = mean(compN(:,:,track_ind),3,'omitnan');
+            track_compU(:,:,ind_count) = mean(compU(:,:,track_ind),3,'omitnan');
 
             % merge pixel uncertainties
-            track_vstd(:,:,ind_count) = mean(full_nan(vstd(:,:,track_ind)),3,'omitnan');
+            track_vstd(:,:,ind_count) = mean(vstd(:,:,track_ind),3,'omitnan');
             
         else
             % number of segments
@@ -190,11 +185,11 @@ for ii = 1:length(unique_tracks)
             multi_segment = [1; multi_segment(:); length(track_ind)];
             
             % add extra layers onto track arrays
-            track_vel = cat(3,track_vel,nan([size(xx) n_seg-1]));
-            track_compE = cat(3,track_compE,nan([size(xx) n_seg-1]));
-            track_compN = cat(3,track_compN,nan([size(xx) n_seg-1]));
-            track_compU = cat(3,track_compU,nan([size(xx) n_seg-1]));
-            track_vstd = cat(3,track_vstd,nan([size(xx) n_seg-1]));
+            track_vel = cat(3,track_vel,nan([size(vel,[1 2]) n_seg-1]));
+            track_compE = cat(3,track_compE,nan([size(vel,[1 2]) n_seg-1]));
+            track_compN = cat(3,track_compN,nan([size(vel,[1 2]) n_seg-1]));
+            track_compU = cat(3,track_compU,nan([size(vel,[1 2]) n_seg-1]));
+            track_vstd = cat(3,track_vstd,nan([size(vel,[1 2]) n_seg-1]));
             
             % duplicate track name
             repelem_vec = ones(1,length(unique_tracks));
@@ -207,17 +202,17 @@ for ii = 1:length(unique_tracks)
                 
                 % take mean of subset of frames on track
                 track_vel(:,:,ind_count+ind_count_inc) ...
-                    = mean(full_nan(vel(:,:,track_ind(multi_segment(kk):multi_segment(kk+1)))),3,'omitnan');
+                    = mean(vel(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
                 
                 track_compE(:,:,ind_count+ind_count_inc) ...
-                    = mean(full_nan(compE(:,:,track_ind(multi_segment(kk):multi_segment(kk+1)))),3,'omitnan');
+                    = mean(compE(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
                 track_compN(:,:,ind_count+ind_count_inc) ...
-                    = mean(full_nan(compN(:,:,track_ind(multi_segment(kk):multi_segment(kk+1)))),3,'omitnan');
+                    = mean(compN(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
                 track_compU(:,:,ind_count+ind_count_inc) ...
-                    = mean(full_nan(compU(:,:,track_ind(multi_segment(kk):multi_segment(kk+1)))),3,'omitnan');
+                    = mean(compU(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
                 
                 track_vstd(:,:,ind_count+ind_count_inc) ...
-                    = mean(full_nan(vstd(:,:,track_ind(multi_segment(kk):multi_segment(kk+1)))),3,'omitnan');
+                    = mean(vstd(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
                 
                 % increment counter
                 ind_count_inc = ind_count_inc + 1;
@@ -276,11 +271,6 @@ if par.merge_tracks_along == 1
     track_vel = vel; track_vstd = vstd;
     track_compE = compE; track_compN = compN; track_compU = compU;
 end
-
-% convert to sparse arrays
-track_vel = ndSparse(track_vel); track_vstd = ndSparse(track_vstd);
-track_compE = ndSparse(track_compE); track_compN = ndSparse(track_compN);
-track_compU = ndSparse(track_compU);
 
 %% plot merged tracks
 
