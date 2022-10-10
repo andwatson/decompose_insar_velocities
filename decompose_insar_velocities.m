@@ -21,7 +21,7 @@
 
 disp('Beginning run')
 
-config_file = '/scratch/eearw/decomp_frame_vels/conf/thesis_ds_nosarpol.conf';
+config_file = '/scratch/eearw/decomp_frame_vels/conf/thesis_nosarpol.conf';
 
 % add subdirectory paths
 addpath util plotting
