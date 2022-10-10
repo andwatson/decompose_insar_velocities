@@ -278,9 +278,9 @@ if par.merge_tracks_along == 1
 end
 
 % convert to sparse arrays
-% track_vel = ndSparse(track_vel); track_vstd = ndSparse(track_vstd);
-% track_compE = ndSparse(track_compE); track_compN = ndSparse(track_compN);
-% track_compU = ndSparse(track_compU);
+track_vel = ndSparse(track_vel); track_vstd = ndSparse(track_vstd);
+track_compE = ndSparse(track_compE); track_compN = ndSparse(track_compN);
+track_compU = ndSparse(track_compU);
 
 %% plot merged tracks
 

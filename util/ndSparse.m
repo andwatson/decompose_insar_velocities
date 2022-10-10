@@ -2179,7 +2179,7 @@ classdef ndSparse
              
             sz=size(L);
             nn=length(sz);
-            if dim>nn || sz(dim)<=1,
+            if dim>nn | sz(dim)<=1,
                 varargout{1}=L;
                 if nargout>1,
                    varargout{2}=ones(size(L)); 

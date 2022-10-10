@@ -46,7 +46,7 @@ for ii = 1:nframes
     gnss_los = (gnss_E.*compE(:,:,ii)) + (gnss_N.*compN(:,:,ii));
 
     % calculate residual
-    vel_tmp = vel(:,:,ii);
+    vel_tmp = full_nan(vel(:,:,ii));
     
     % mask after deramping (deramp isn't carried forward)
     % use a hardcoded 10 mm/yr limit to remove large signals (mainly
@@ -119,7 +119,7 @@ for ii = 1:nframes
     end
     
     % mask resid with vel (just for plotting)
-    vel_mask = single(~isnan(vel(:,:,ii)));
+    vel_mask = single(~isnan(full_nan(vel(:,:,ii))));
     vel_mask(vel_mask==0) = nan;
     gnss_resid_plane(:,:,ii) = gnss_resid_plane(:,:,ii) .* vel_mask;
     

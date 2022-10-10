@@ -59,7 +59,7 @@ for ii = 1:size(vel,3)
     plate_los = (plate_E .* compE(:,:,ii)) + (plate_N .* compN(:,:,ii));
     
     % set a common reference (find point closest to zero vel)
-    [~,min_ind] = min(abs(vel(:,:,ii)),[],'all','linear','omitnan');
+    [~,min_ind] = min(abs(full_nan(vel(:,:,ii))),[],'all','linear','omitnan');
     [ref_yind,ref_xind] = ind2sub(size(vel(:,:,ii)),min_ind);    
     vel(:,:,ii) = vel(:,:,ii) - vel(ref_yind,ref_xind,ii);
     plate_los = plate_los - plate_los(ref_yind,ref_xind);

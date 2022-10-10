@@ -254,14 +254,6 @@ dx = min(cellfun(@min,dx)); dy = min(cellfun(@min,dy));
 % new grid to project data onto
 [xx_regrid,yy_regrid] = meshgrid(x_regrid,y_regrid); 
 
-% pre-allocate
-% vel_regrid = zeros([size(xx_regrid) nframes]);
-% vstd_regrid = zeros(size(vel_regrid)); mask_regrid = zeros(size(vel_regrid));
-% compE_regrid = zeros(size(vel_regrid)); compN_regrid = zeros(size(vel_regrid));
-% compU_regrid = zeros(size(vel_regrid));
-
-% More efficient (?) to cat sparse arrays than pre-allocate.
-
 for ii = 1:nframes
     
     % pre-allocate zeros for sparse
@@ -317,16 +309,9 @@ for ii = 1:nframes
         compU_regrid_loop(mask_regrid_loop==0) = nan;
         
         % return nans to zeros for sparse
+        % 1 = valid, 0 = masked or out of frame
         mask_regrid_loop(isnan(mask_regrid_loop)) = 0;
     end
-    
-    % make sure all nans are converted to zeros
-%     vel_regrid_loop(isnan(vel_regrid_loop)) = 0;
-%     vstd_regrid_loop(isnan(vstd_regrid_loop)) = 0;
-%     mask_regrid_loop(isnan(mask_regrid_loop)) = 0;
-%     compE_regrid_loop(isnan(compE_regrid_loop)) = 0;
-%     compN_regrid_loop(isnan(compN_regrid_loop)) = 0;
-%     compU_regrid_loop(isnan(compU_regrid_loop)) = 0;
     
     % combine into sparse arrays
     if ii == 1
@@ -469,8 +454,8 @@ end
 
 %% identify pixels without both asc and desc coverage
 
-asc_coverage = any(~isnan(vel_regrid(:,:,asc_frames_ind)),3);
-desc_coverage = any(~isnan(vel_regrid(:,:,desc_frames_ind)),3);
+asc_coverage = full(any(~isnan(vel_regrid(:,:,asc_frames_ind)),3));
+desc_coverage = full(any(~isnan(vel_regrid(:,:,desc_frames_ind)),3));
 both_coverage = all(cat(3,asc_coverage,desc_coverage),3);
 
 %% velocity decomposition
