@@ -92,7 +92,10 @@ for ii = 1:length(unique_tracks)
                 
                 % save overlap for plotting
                 if par.plt_merge_along_resid == 1
-                    overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
+                    vel2 = full(vel(:,:,track_ind(jj+1)));
+                    vel1 = full(vel(:,:,track_ind(jj)));
+                    vel2(vel2==0) = nan; vel1(vel1==0) = nan; 
+                    overlaps{n_ov} = vel2 - vel1;
                     n_ov = n_ov + 1;
                 end
                 
