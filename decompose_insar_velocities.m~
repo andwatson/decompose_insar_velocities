@@ -116,7 +116,12 @@ for ii = 1:nframes
         namestruct = dir([insarpar.dir{ii} '*' insarpar.id_mask '*']);
         [~,~,mask{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name]);
     end
-        
+    
+    % mask all arrays with the velocities - this ensures that the
+    % boundaries of the vels are the same (things like coastlines can mean
+    % that e.g. compE extends further than vel).
+    
+    
 end
 
 % get indices of ascending and descending frames
@@ -312,15 +317,6 @@ for ii = 1:nframes
         % 1 = valid, 0 = masked or out of frame
         mask_regrid_loop(isnan(mask_regrid_loop)) = 0;
     end
-    
-    % mask all arrays with the velocities - this ensures that the
-    % boundaries of the vels are the same (things like coastlines can mean
-    % that e.g. compE extends further than vel).
-    vstd_regrid_loop(isnan(vel_regrid_loop)) = nan;
-    compE_regrid_loop(isnan(vel_regrid_loop)) = nan;
-    compN_regrid_loop(isnan(vel_regrid_loop)) = nan;
-    compU_regrid_loop(isnan(vel_regrid_loop)) = nan;
-    mask_regrid_loop(isnan(vel_regrid_loop)) = nan;
     
     % combine into sparse arrays
     if ii == 1

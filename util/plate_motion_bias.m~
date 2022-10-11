@@ -56,20 +56,24 @@ if par.plt_plate_motion == 1; vel_orig = vel; load('plotting/cpt/vik.mat'); end
 for ii = 1:size(vel,3)
     
     % project into line-of-sight
+%     plate_los = (plate_E .* full_nan(compE(:,:,ii))) + (plate_N .* full_nan(compN(:,:,ii)));
     plate_los = (plate_E .* compE(:,:,ii)) + (plate_N .* compN(:,:,ii));
     
     % set a common reference (find point closest to zero vel)
     [~,min_ind] = min(abs(full_nan(vel(:,:,ii))),[],'all','linear','omitnan');
     [ref_yind,ref_xind] = ind2sub(size(vel(:,:,ii)),min_ind);  
     
+%     plate_los = plate_los - plate_los(ref_yind,ref_xind);
     plate_ref_val = plate_los(ref_yind,ref_xind);
     plate_los = spfun(@(x) x-plate_ref_val,plate_los);
     
+%     vel(:,:,ii) = vel(:,:,ii) - vel(ref_yind,ref_xind,ii);
     vel_ref_val = vel(ref_yind,ref_xind,ii);
     vel(:,:,ii) = spfun(@(x) x-vel_ref_val,vel(:,:,ii));
     
     % apply correction
     vel(:,:,ii) = vel(:,:,ii) - plate_los;
+    vel(:,:,ii) = spfun(@(x) x-plate_los,vel(:,:,ii));
     
     % optional plotting
     if par.plt_plate_motion_indv == 1

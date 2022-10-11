@@ -281,17 +281,24 @@ if par.merge_tracks_along == 1
 end
 
 % convert to sparse arrays
-track_vel = ndSparse(track_vel); track_vstd = ndSparse(track_vstd);
-track_compE = ndSparse(track_compE); track_compN = ndSparse(track_compN);
-track_compU = ndSparse(track_compU);
+if par.merge_tracks_along == 2
+    track_vel = ndSparse(track_vel); track_vstd = ndSparse(track_vstd);
+    track_compE = ndSparse(track_compE); track_compN = ndSparse(track_compN);
+    track_compU = ndSparse(track_compU);
+end
 
 %% plot merged tracks
 
 if par.plt_merge_tracks == 1
     
     % asc and desc indices
-    unique_tracks_asc_ind = find(cellfun(@(x) strncmp('A',x(4),4), unique_tracks));
-    unique_tracks_desc_ind = find(cellfun(@(x) strncmp('D',x(4),4), unique_tracks));
+    if par.merge_tracks_along == 1
+        asc_ind = find(cellfun(@(x) strncmp('A',x(4),4), frames));
+        desc_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
+    elseif par.merge_tracks_along == 2
+        asc_ind = find(cellfun(@(x) strncmp('A',x(4),4), unique_tracks));
+        desc_ind = find(cellfun(@(x) strncmp('D',x(4),4), unique_tracks));
+    end
     
     % set plotting parameters
     lonlim = [min(x) max(x)];
@@ -313,12 +320,12 @@ if par.plt_merge_tracks == 1
     
     % plot ascending tracks
     t(1) = nexttile; hold on
-    plt_data(x,y,track_vel(:,:,unique_tracks_asc_ind),lonlim,latlim,clim,'Ascending (mm/yr)',[],borders)
+    plt_data(x,y,track_vel(:,:,asc_ind),lonlim,latlim,clim,'Ascending (mm/yr)',[],borders)
     colormap(t(1),vik)
     
     % plot descending tracks
     t(2) = nexttile; hold on
-    plt_data(x,y,track_vel(:,:,unique_tracks_desc_ind),lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
+    plt_data(x,y,track_vel(:,:,desc_ind),lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
     colormap(t(2),vik)
 
 end
