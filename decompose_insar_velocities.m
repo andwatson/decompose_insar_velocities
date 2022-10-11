@@ -1,3 +1,4 @@
+function decompose_insar_velocities(config_file)
 %% decompose_insar_velocities.m
 %
 % Decomposes line-of-sight velocities (primarily from LiCSBAS into a
@@ -20,8 +21,6 @@
 % Andrew Watson     26-04-2021 (Original version)
 
 disp('Beginning run')
-
-config_file = '/scratch/eearw/decomp_frame_vels/conf/thesis_nosarpol.conf';
 
 % add subdirectory paths
 addpath util plotting
@@ -575,3 +574,5 @@ end
 
 disp('Run complete')
 toc
+
+end

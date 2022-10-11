@@ -266,7 +266,12 @@ end
 
 %% plot merged tracks
 
-if par.plt_merge_tracks == 1
+% make sure tracks have been merged
+if par.plt_merge_tracks == 1 && par.merge_tracks_along == 1
+    warning(["Merge track plot requested, but merge_tracks_along ~= 2."])
+end
+
+if par.plt_merge_tracks == 1 && par.merge_tracks_along == 2
     
     % asc and desc indices
     unique_tracks_asc_ind = find(cellfun(@(x) strncmp('A',x(4),4), unique_tracks));
