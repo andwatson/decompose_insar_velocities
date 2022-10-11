@@ -31,7 +31,7 @@ function [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] .
 %% setup
 
 % size consts
-rowcol = size(vel,[1 2]);
+rowcol = [size(vel,1) size(vel,2)];
 nframes = size(vel,3);
 
 % pre-al
@@ -46,6 +46,7 @@ condG_threshold_mask = zeros(rowcol);
 % and heading. Incidence angle is measured from the vertical, and azimuth
 % is measured negatively counterclockwise from north. This is to match the
 % definitions in Qi's work.
+compE = full_nan(compE); compU = full_nan(compU);
 inc = 90 - asind(compU);
 az = acosd(compE./sind(inc))-180;
 compUN = sqrt(1 - sind(inc).^2 .* cosd(az).^2);
@@ -65,22 +66,30 @@ vel = reshape(vel,[],nframes);
 vstd = reshape(vstd,[],nframes);
 compUN = reshape(compUN,[],nframes);
 compE = reshape(compE,[],nframes);
+both_coverage = both_coverage(:);
+
+% remove any points without at least two look directions
+vel(both_coverage==0,:) = [];
+vstd(both_coverage==0,:) = [];
+compUN(both_coverage==0,:) = [];
+compE(both_coverage==0,:) = [];
+jj(both_coverage==0,:) = [];
+kk(both_coverage==0,:) = [];
+
+% convert to full
+vel = full_nan(vel);
+vstd = full_nan(vstd);
 
 % progress report interval
 report_it = round(size(vel,1)/10);
 
 % loop through pixels
-for ii = 1:size(vel,1)
+for ii = 1:length(jj)
     
     % report progress
     if mod(ii,report_it) == 0
         disp([num2str(ii) '/' num2str(size(vel,1)) ...
             ' (' num2str(round(ii/size(vel,1).*100)) '%) rows completed'])
-    end
-    
-    % skip points without coverage in both look directions
-    if both_coverage(jj(ii),kk(ii)) == 0
-        continue
     end
 
     % make components
@@ -137,9 +146,13 @@ N2U = (sind(az).*sind(inc)) ./ cosd(inc);
 m_up = m_UN.*UN2U - gnss_N.*N2U;
 
 % same for the uncertainty
-UN2U_var = (1 - sind(inc).^2 .* cosd(az).^2) ./ cosd(inc);
-N2U_var = ((sind(az).^2).*(sind(inc).^2)) ./ (cosd(inc).^2);
-var_up = sqrt((var_UN.^2 .* UN2U_var) + (gnss_sN .* N2U_var));
+if ~isempty(gnss_sN)
+    UN2U_var = (1 - sind(inc).^2 .* cosd(az).^2) ./ cosd(inc);
+    N2U_var = ((sind(az).^2).*(sind(inc).^2)) ./ (cosd(inc).^2);
+    var_up = sqrt((var_UN.^2 .* UN2U_var) + (gnss_sN .* N2U_var));
+else
+    var_up = zeros(size(m_up));
+end
 
 % take the weighted mean
 m_up = sum(m_up.*(1./var_up),3,'omitnan') ./ sum((1./var_up),3,'omitnan');

@@ -75,15 +75,15 @@ if par.decomp_method == 1; gnss_N = gnss_N(:); end
 if par.gnss_uncer == 1; gnss_sN = gnss_sN(:); end
 
 % remove any points without at least two look directions
-vel(both_coverage==0) = [];
-vstd(both_coverage==0) = [];
-compU(both_coverage==0) = [];
-compE(both_coverage==0) = [];
-compN(both_coverage==0) = [];
-jj(both_coverage==0) = [];
-kk(both_coverage==0) = [];
-if par.decomp_method == 1; gnss_N(both_coverage==0) = []; end
-if par.gnss_uncer == 1; gnss_sN(both_coverage==0) = []; end
+vel(both_coverage==0,:) = [];
+vstd(both_coverage==0,:) = [];
+compU(both_coverage==0,:) = [];
+compE(both_coverage==0,:) = [];
+compN(both_coverage==0,:) = [];
+jj(both_coverage==0,:) = [];
+kk(both_coverage==0,:) = [];
+if par.decomp_method == 1; gnss_N(both_coverage==0,:) = []; end
+if par.gnss_uncer == 1; gnss_sN(both_coverage==0,:) = []; end
 
 % convert to full
 vel = full_nan(vel);
