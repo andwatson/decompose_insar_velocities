@@ -64,13 +64,11 @@ for ii = 1:length(unique_tracks)
             for jj = 1:length(track_ind)-1
                 
                 % convert from sparse to full for ease
-                vel2 = full(vel(:,:,track_ind(jj+1)));
-                vel1 = full(vel(:,:,track_ind(jj)));                
-                vel2(vel2==0) = nan; vel1(vel1==0) = nan; 
+                vel2 = full_nan(vel(:,:,track_ind(jj+1)));
+                vel1 = full_nan(vel(:,:,track_ind(jj)));                
                 
                 % calculate residual between overlap and remove nans     
                 overlap_resid = vel2 - vel1;
-%                 overlap_resid = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
                 overlap_resid(isnan(overlap_resid)) = [];
                 
                 if isempty(overlap_resid)
@@ -108,9 +106,8 @@ for ii = 1:length(unique_tracks)
             for jj = 1:length(track_ind)-1
                 
                 % convert from sparse to full for ease
-                vel2 = full(vel(:,:,track_ind(jj+1)));
-                vel1 = full(vel(:,:,track_ind(jj)));                
-                vel2(vel2==0) = nan; vel1(vel1==0) = nan; 
+                vel2 = full_nan(vel(:,:,track_ind(jj+1)));
+                vel1 = full_nan(vel(:,:,track_ind(jj)));                
                 
                 % calculate residual between overlap and remove nans           
                 overlap_resid = vel2 - vel1;
@@ -130,14 +127,17 @@ for ii = 1:length(unique_tracks)
                 G = [ones(length(x_overlap),1) x_overlap y_overlap];
                 m = (G'*G)^-1*G'*overlap_resid';
                 overlap_plane = m(1) + m(2).*xx + m(3).*yy;
+                overlap_plane(isnan(vel2)) = nan;
                 
                 % apply plane
-%                 vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - overlap_plane;
-                vel(:,:,track_ind(jj+1)) = spfun(@(x) x-overlap_plane,vel(:,:,track_ind(jj+1)));
+                vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - overlap_plane;
+%                 vel(:,:,track_ind(jj+1)) = spfun(@(x) x-overlap_plane,vel(:,:,track_ind(jj+1)));
                 
                 % save overlap for plotting
                 if par.plt_merge_along_resid == 1
-                    overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
+                    vel2 = full_nan(vel(:,:,track_ind(jj+1)));
+                    vel1 = full_nan(vel(:,:,track_ind(jj)));
+                    overlaps{n_ov} = vel2 - vel1;
                     n_ov = n_ov + 1;
                 end
                 
