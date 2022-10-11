@@ -82,6 +82,8 @@ compE(both_coverage==0) = [];
 compN(both_coverage==0) = [];
 jj(both_coverage==0) = [];
 kk(both_coverage==0) = [];
+if par.decomp_method == 1; gnss_N(both_coverage==0) = []; end
+if par.gnss_uncer == 1; gnss_sN(both_coverage==0) = []; end
 
 % convert to full
 vel = full_nan(vel);
