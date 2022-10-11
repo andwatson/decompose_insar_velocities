@@ -29,7 +29,7 @@ function [vel] = ref_to_gnss(par,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_
 
 % pre-allocate
 nframes = size(vel,3);
-gnss_resid_plane = zeros([size(xx) nframes]);
+% gnss_resid_plane = zeros([size(xx) nframes]);
 
 % coords
 x = xx(1,:); y = yy(:,1);
@@ -89,7 +89,7 @@ for ii = 1:nframes
                 G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy gnss_xx.*gnss_yy ...
                     gnss_xx.^2 gnss_yy.^2];
                 m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
-                gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy ...
+                gnss_resid_plane_loop = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy ...
                     + m_resid(4).*all_xx.*all_yy + m_resid(5).*all_xx.^2 + m_resid(6).*all_yy.^2;
             end
             
@@ -108,28 +108,35 @@ for ii = 1:nframes
             gnss_resid_filtered(isnan(gnss_resid)) = nan;
             
             % store
-            gnss_resid_plane(:,:,ii) = gnss_resid_filtered;
+            gnss_resid_plane_loop = gnss_resid_filtered;
             
     end
     
     % for plotting
     if par.plt_ref_gnss_indv == 1
-        vel_orig = vel(:,:,ii);
-        load('plotting/cpt/vik.mat')
+        vel_orig = full_nan(vel(:,:,ii));
     end
-    
-    % mask resid with vel (just for plotting)
-    vel_mask = single(~isnan(full_nan(vel(:,:,ii))));
-    vel_mask(vel_mask==0) = nan;
-    gnss_resid_plane(:,:,ii) = gnss_resid_plane(:,:,ii) .* vel_mask;
-    
+        
+    % convert resid_plane to sparse and reapply nans
+    gnss_resid_plane_loop(vel(:,:,ii)==0) = 0;
+    gnss_resid_plane_loop = sparse(gnss_resid_plane_loop);
+    gnss_resid_plane_loop(isnan(vel(:,:,ii))) = nan;
+       
     % remove from insar
-    vel(:,:,ii) = vel(:,:,ii) - gnss_resid_plane(:,:,ii);
+    vel(:,:,ii) = vel(:,:,ii) - gnss_resid_plane_loop;
     
+    % save to sparse
+    if ii == 1
+        gnss_resid_plane = ndSparse(gnss_resid_plane_loop);
+    else
+        gnss_resid_plane = cat(3,gnss_resid_plane,gnss_resid_plane_loop);
+    end
     
     % optional plotting
     if par.plt_ref_gnss_indv == 1
-
+        
+        load('plotting/cpt/vik.mat')
+        
         % limits
         clim = [-10 10];
         x = xx(1,:); y = yy(:,1);

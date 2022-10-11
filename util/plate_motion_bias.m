@@ -62,10 +62,12 @@ for ii = 1:size(vel,3)
     [~,min_ind] = min(abs(full_nan(vel(:,:,ii))),[],'all','linear','omitnan');
     [ref_yind,ref_xind] = ind2sub(size(vel(:,:,ii)),min_ind);  
     
-    plate_ref_val = plate_los(ref_yind,ref_xind);
+    % shift, including a ~1e15 offset to stop the value disappearing in
+    % the sparse arry
+    plate_ref_val = plate_los(ref_yind,ref_xind)+1.1e-15;
     plate_los = spfun(@(x) x-plate_ref_val,plate_los);
     
-    vel_ref_val = vel(ref_yind,ref_xind,ii);
+    vel_ref_val = vel(ref_yind,ref_xind,ii)+1e-15;
     vel(:,:,ii) = spfun(@(x) x-vel_ref_val,vel(:,:,ii));
     
     % apply correction

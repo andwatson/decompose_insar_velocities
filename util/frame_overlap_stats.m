@@ -18,9 +18,6 @@ function frame_overlap_stats(vel,frames,compU)
 %                                                                  
 %=================================================================
 
-% remove nans from vels
-vel(isnan(vel)) = 0;
-
 %% get unique tracks, split by pass direction
 
 % get tracks from frame ids, removing duplicates
@@ -71,26 +68,33 @@ end
 
 %% prep across-track overlaps
 
-disp('Calculating across-track overlaps')
+if length(unique_tracks_asc)>1 || length(unique_tracks_desc)>1
 
-% calc inc from u
-inc = asind(compU);
-inc(inc==0) = nan;
+    disp('Calculating across-track overlaps')
 
-% assume that all motion is horizontal, using the mean incidence angle of
-% each frame
-vel_horz = vel./cosd(inc);
-for ii = 1:length(tracks)
-    vel_horz(:,:,ii) = vel_horz(:,:,ii) .* mean(cosd(inc(:,:,ii)),'all','omitnan');
+    % calc inc from u
+    % inc = asind(compU);
+    % inc(inc==0) = nan;
+    inc = spfun(@asind,compU);
+
+    % assume that all motion is horizontal, using the mean incidence angle of
+    % each frame
+    vel_horz = vel .* spfun(@(x) 1./x,spfun(@cosd,inc));
+    for ii = 1:length(tracks)
+        cos_inc = spfun(@cosd,inc(:,:,ii));
+        vel_horz(:,:,ii) = vel_horz(:,:,ii) .* spfun(@(x) mean(x,'all','omitnan'),cos_inc);
+    %     vel_horz(:,:,ii) = vel_horz(:,:,ii) .* mean(cosd(inc(:,:,ii)),'all','omitnan');
+    end
+
+    % get all combinations of tracks (split into asc and desc)
+    combins_asc = nchoosek(1:length(unique_tracks_asc),2);
+    combins_desc = nchoosek(1:length(unique_tracks_desc),2);
+
+    % calculate across track overlaps
+    [across_track_asc] = across_track_loop(combins_asc,tracks,unique_tracks_asc,vel);
+    [across_track_desc] = across_track_loop(combins_desc,tracks,unique_tracks_desc,vel);
+
 end
-
-% get all combinations of tracks (split into asc and desc)
-combins_asc = nchoosek(1:length(unique_tracks_asc),2);
-combins_desc = nchoosek(1:length(unique_tracks_desc),2);
-
-% calculate across track overlaps
-[across_track_asc] = across_track_loop(combins_asc,tracks,unique_tracks_asc,vel);
-[across_track_desc] = across_track_loop(combins_desc,tracks,unique_tracks_desc,vel);
 
 %% plot histograms
 % Histogram each set and fit a gaussian function to estimate mean and SD.
@@ -125,24 +129,28 @@ legend(['mean = ' num2str(f2.b1)],['std = ' num2str(f2.c1)])
 title('Along-track desc')
 
 % across-track asc
-nexttile; hold on
-h3 = histogram(across_track_asc(:),nhist);
-h3_mids = h3.BinEdges(1:end-1)+(diff(h3.BinEdges)./2);
-f3 = fit(h3_mids',h3.Values','gauss1');
-plot(xmin:xint:xmax,f3(xmin:xint:xmax),'r')
-legend(['mean = ' num2str(f3.b1)],['std = ' num2str(f3.c1)])
-% xlim([xmin xmax])
-title('Across-track asc')
+if length(unique_tracks_asc)>1
+    nexttile; hold on
+    h3 = histogram(across_track_asc(:),nhist);
+    h3_mids = h3.BinEdges(1:end-1)+(diff(h3.BinEdges)./2);
+    f3 = fit(h3_mids',h3.Values','gauss1');
+    plot(xmin:xint:xmax,f3(xmin:xint:xmax),'r')
+    legend(['mean = ' num2str(f3.b1)],['std = ' num2str(f3.c1)])
+    % xlim([xmin xmax])
+    title('Across-track asc')
+end
 
 % across-track desc
-nexttile; hold on
-h4 = histogram(across_track_desc(:),nhist);
-h4_mids = h4.BinEdges(1:end-1)+(diff(h4.BinEdges)./2);
-f4 = fit(h4_mids',h4.Values','gauss1');
-plot(xmin:xint:xmax,f4(xmin:xint:xmax),'r')
-legend(['mean = ' num2str(f4.b1)],['std = ' num2str(f4.c1)])
-% xlim([xmin xmax])
-title('Across-track desc')
+if length(unique_tracks_desc)>1
+    nexttile; hold on
+    h4 = histogram(across_track_desc(:),nhist);
+    h4_mids = h4.BinEdges(1:end-1)+(diff(h4.BinEdges)./2);
+    f4 = fit(h4_mids',h4.Values','gauss1');
+    plot(xmin:xint:xmax,f4(xmin:xint:xmax),'r')
+    legend(['mean = ' num2str(f4.b1)],['std = ' num2str(f4.c1)])
+    % xlim([xmin xmax])
+    title('Across-track desc')
+end
 
 end
 
