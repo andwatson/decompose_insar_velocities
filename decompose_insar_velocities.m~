@@ -463,8 +463,10 @@ end
 
 %% identify pixels without both asc and desc coverage
 
-asc_coverage = any(~isnan(full_nan(vel_regrid(:,:,asc_frames_ind))),3);
-desc_coverage = any(~isnan(full_nan(vel_regrid(:,:,desc_frames_ind))),3);
+
+
+asc_coverage = full(any(~isnan(vel_regrid(:,:,asc_frames_ind)),3));
+desc_coverage = full(any(~isnan(vel_regrid(:,:,desc_frames_ind)),3));
 both_coverage = all(cat(3,asc_coverage,desc_coverage),3);
 
 %% velocity decomposition
@@ -527,7 +529,7 @@ t(3) = nexttile; hold on
 plt_data(x_regrid,y_regrid,gnss_N,lonlim,latlim,[],'North (mm/yr)',fault_trace,borders)
 
 t(4) = nexttile; hold on
-coverage = sum(~isnan(full_nan(vel_regrid)),3);
+coverage = sum(~isnan(vel_regrid),3);
 plt_data(x_regrid,y_regrid,coverage,lonlim,latlim,[],'Data coverage',fault_trace,borders)
 
 %% plot velocity uncertainties

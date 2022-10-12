@@ -151,11 +151,14 @@ if ~isempty(gnss_sN)
     N2U_var = ((sind(az).^2).*(sind(inc).^2)) ./ (cosd(inc).^2);
     var_up = sqrt((var_UN.^2 .* UN2U_var) + (gnss_sN .* N2U_var));
 else
-    var_up = zeros(size(m_up));
+    var_up = ones(size(m_up));
 end
 
 % take the weighted mean
 m_up = sum(m_up.*(1./var_up),3,'omitnan') ./ sum((1./var_up),3,'omitnan');
 var_up = sum(var_up.^2,3,'omitnan') ./ sum(var_up,3,'omitnan');
 
+% mask
+m_up(m_up==0) = nan;
+var_up(var_up==0) = nan;
 
