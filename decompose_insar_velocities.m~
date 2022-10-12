@@ -124,7 +124,7 @@ desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
 
 % fault traces
 if par.plt_faults == 1
-    fault_trace = single(readmatrix(par.faults_file));
+    fault_trace = readmatrix(par.faults_file);
 else
     fault_trace = [];
 end
@@ -339,9 +339,6 @@ if par.usemask == 1
     mask_regrid(isnan(mask_regrid)) = 0;
     mask_regrid(mask_regrid>=0.5) = 1; mask_regrid(mask_regrid<0.5) = 0;
     vel_regrid(mask_regrid==0) = NaN;
-    
-    % convert to logical
-    mask_regrid = logical(mask_regrid);
 
 end
 
