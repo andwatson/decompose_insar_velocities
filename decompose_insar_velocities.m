@@ -18,6 +18,8 @@ function decompose_insar_velocities(config_file)
 % File formats can be found in the README and in the headers of each
 % script.
 %
+% Written for matlab/2020a.
+%
 % Andrew Watson     26-04-2021 (Original version)
 
 disp('Beginning run')
