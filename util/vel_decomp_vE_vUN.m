@@ -152,3 +152,5 @@ var_up = sum(var_up.^2,3,'omitnan') ./ sum(var_up,3,'omitnan');
 % mask
 m_up(m_up==0) = nan;
 var_up(var_up==0) = nan;
+
+end

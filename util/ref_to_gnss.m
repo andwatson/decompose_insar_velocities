@@ -174,7 +174,7 @@ load('plotting/cpt/vik.mat')
 f = figure();
 f.Position([1 3 4]) = [600 1600 600];
 t = tiledlayout(1,2,'TileSpacing','compact');
-title(t,'Along-track merge')
+title(t,'Referencing surfaces')
 
 % ascending tracks
 t(1) = nexttile; hold on
