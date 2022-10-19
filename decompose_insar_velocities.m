@@ -243,6 +243,62 @@ if par.ds_factor > 0
     
 end
 
+%% scale velocity uncertainties
+
+if par.scale_vstd == 1
+    
+    disp(['Scaling velocity uncertainties using ' par.scale_vstd_model ' model'])
+    
+    for ii = 1:nframes
+        
+        % apply scaling
+        vstd{ii} = scale_vstd(par,lon{ii},lat{ii},vstd{ii});
+        
+        % report progress
+        if (mod(ii,round(nframes./10))) == 0
+            disp([num2str(round((ii./nframes)*100)) '% completed']);
+        end
+    end
+    
+    % plot all if requested
+    if par.plt_scale_vstd_all == 1
+       
+        disp('Plotting scaled uncertainties')
+    
+        % set plotting parameters
+        lonlim = [min(cellfun(@min,lon)) max(cellfun(@max,lon))]; 
+        latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))]; close 
+        clim = [0 3];
+
+        % temporarily apply mask for plotting
+        vstd_tmp = vstd;
+        for ii = 1:nframes
+            vstd_tmp{ii}(mask{ii}==0) = nan;
+        end
+
+        f = figure();
+        f.Position([1 3 4]) = [600 1600 600];
+        t = tiledlayout(1,2,'TileSpacing','compact');
+        title(t,'Scaled uncertainties (mm/yr)^2')
+
+        % plot ascending tracks
+        t(1) = nexttile; hold on
+        plt_data(lon(asc_frames_ind),lat(asc_frames_ind),vstd_tmp(asc_frames_ind),...
+            lonlim,latlim,clim,'Ascending (mm/yr)',[],borders)
+        colormap(t(1),batlow)
+
+        % plot descending tracks
+        t(2) = nexttile; hold on
+        plt_data(lon(desc_frames_ind),lat(desc_frames_ind),vstd_tmp(desc_frames_ind),...
+            lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
+        colormap(t(2),batlow)
+        
+        clear vstd_tmp
+        
+    end
+    
+end
+
 %% unify grids
 
 disp('Unifying grids')

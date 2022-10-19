@@ -104,8 +104,8 @@ par.plt_borders = getparval(cfgcell,'plt_borders',0);
 par.plt_input_vels = getparval(cfgcell,'plt_input_vels',0);
 
 % plot scaled uncertainties
-par.plt_scale_vstd_indv = getparval(cfgcell,'plt_scale_vstd_indv',0);
-par.plt_scale_vstd_all = getparval(cfgcell,'plt_scale_vstd_all',0);
+par.scale_vstd_indv = getparval(cfgcell,'scale_vstd_indv',0);
+par.scale_vstd_all = getparval(cfgcell,'scale_vstd_all',0);
 
 % plot merged tracks
 par.plt_merge_tracks = getparval(cfgcell,'plt_merge_tracks',0);
