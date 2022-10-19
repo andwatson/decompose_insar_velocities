@@ -156,7 +156,7 @@ if par.plt_input_vels == 1
     
     % set plotting parameters
     lonlim = [min(cellfun(@min,lon)) max(cellfun(@max,lon))]; 
-    latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))]; 
+    latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))]; close 
     clim = [-10 10];
     
     % temporarily apply mask for plotting

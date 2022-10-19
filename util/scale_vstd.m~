@@ -1,4 +1,4 @@
-function vstd_scaled = scale_vstd(x,y,vstd)
+function vstd_scale = scale_vstd(x,y,vstd)
 %=================================================================
 % function vstd_scale()
 %-----------------------------------------------------------------
@@ -14,8 +14,6 @@ function vstd_scaled = scale_vstd(x,y,vstd)
 % Andrew Watson     19-10-2022
 %                                                                  
 %=================================================================
-
-%% setup
 
 nbins = 100;
 
@@ -40,58 +38,36 @@ for ii = 1:nbins
     bin_stds(ii) = std(vstd( ref_dists>bin_edges(ii) & ref_dists<=bin_edges(ii+1) ),'omitnan');
 end
 
-%% fit spherical model
-
 % generate weights
 W = 1 ./ (bin_stds + bin_mids./max_dist);
 
-% define objective function to minimise
-obj_fun = @(m) sum(((spherical_model(m,bin_mids)-bin_medians).^2).*W,'omitnan');
+% perform weighted least squares with spherical model
+sph_func = @(b,h) b(2).*((3.*h./(2.*b(1)))-1/2.*(h./b(1)).^3)+b(3);
 
-% starting values
-m0 = [1 1 0];
+% objectfun = @(b) sum(((sph_func(b,bin_mids)-bin_medians).^2).*W);
+objectfun = @(b) sum(((sph_func(b,bin_mids)-bin_medians).^2));
 
-% solve
-[m_fit,~,~,~] = fminsearch(obj_fun,m0);
+b0 = [0 0 0];
+options = optimset('MaxFunEvals',1000000);
 
-%% scale
-
-vstd_scaled = vstd .* (m_fit(2)./spherical_model(m_fit,ref_dists));
-
-%% plot
+[b,fval,exitflag,output] = fminsearch(objectfun,b0,options);
 
 % plot 'semivariogram'
 figure(); hold on
-
 scatter(ref_dists(:),vstd(:),0.1,'MarkerFaceColor',[110 199 38]./255,'MarkerEdgeColor','k');
-
 plot(bin_mids,bin_medians,'Color',[198 55 188]./255,'LineWidth',2)
 plot(bin_mids,bin_medians+bin_stds,'Color',[198 55 188]./255,'LineWidth',1)
 plot(bin_mids,bin_medians-bin_stds,'Color',[198 55 188]./255,'LineWidth',1)
-
-plot(bin_mids,spherical_model(m_fit,bin_mids),'Color','k','LineWidth',2)
-
 xlabel('Distance')
 ylabel('vstd difference')
 
 
-% plot original vstd and scale
-figure()
-tiledlayout(1,2,'TileSpacing','compact');
-
-nexttile
-imagesc(x,y,vstd)
-colorbar
-
-nexttile
-imagesc(x,y,vstd_scaled)
-colorbar
-
 %% spherical model
 
-    function out = spherical_model(m,dists)        
-        out = m(3) + m(2) .* ( ((3.*dists)./(2.*m(1))) - (dists.^3./(2.*m(1).^3)) );
-        out(dists>m(1)) = m(3) + m(2);
+    function out = spherical_model(m,dists)
+        
+        m(3) + m(
+        
     end
 
 end
