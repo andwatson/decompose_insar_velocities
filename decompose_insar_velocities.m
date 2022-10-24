@@ -517,7 +517,7 @@ if par.decomp_method == 0 || par.decomp_method == 1
     % either remove gnss N, and decompose into vE and vU, or include gnss N
     % in the linear problem, and solve for vE, vU, and vN
     disp('Solving directly for vE and vU')
-    [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
+    [m_east,m_up,var_east,var_up,model_corr,condG_threshold_mask,var_threshold_mask] ...
         = vel_decomp(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
         compU_regrid,gnss_N,gnss_sN,both_coverage);
 
@@ -526,7 +526,7 @@ elseif par.decomp_method == 2
     % decompose into vE and vUN, then split vUN into vU and vN (Qi's
     % method)
     disp('Solving for vE and vNU as intermediary step')
-    [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
+    [m_east,m_up,var_east,var_up,model_corr,condG_threshold_mask,var_threshold_mask] ...
         = vel_decomp_vE_vUN(par,vel_regrid,vstd_regrid,compE_regrid,compN_regrid,...
         compU_regrid,gnss_N,gnss_sN,both_coverage);    
 end
@@ -577,8 +577,8 @@ if par.plt_decomp_uncer == 1
     clim = [0 4];
 
     f = figure();
-    f.Position([1 3 4]) = [600 1600 800];
-    t = tiledlayout(1,2,'TileSpacing','compact');
+    f.Position([1 3 4]) = [600 2000 800];
+    t = tiledlayout(1,3,'TileSpacing','compact');
     title(t,'Decomposed velocity uncertainties')
 
     t(1) = nexttile; hold on
@@ -588,6 +588,10 @@ if par.plt_decomp_uncer == 1
     t(2) = nexttile; hold on
     plt_data(x_regrid,y_regrid,var_east,lonlim,latlim,clim,'East (mm/yr)',fault_trace,borders)
     colormap(t(2),batlow)
+    
+    t(3) = nexttile; hold on
+    plt_data(x_regrid,y_regrid,model_corr,lonlim,latlim,clim,'Correlation (mm/yr)',fault_trace,borders)
+    colormap(t(3),batlow)
 
 end
 
