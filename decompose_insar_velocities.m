@@ -249,10 +249,12 @@ if par.scale_vstd == 1
     
     disp(['Scaling velocity uncertainties using ' par.scale_vstd_model ' model'])
     
+    scale_vstd_misfit = nan(nframes,1);
+    
     for ii = 1:nframes
         
         % apply scaling
-        vstd{ii} = scale_vstd(par,lon{ii},lat{ii},vstd{ii});
+        [vstd{ii},scale_vstd_misfit(ii)] = scale_vstd(par,lon{ii},lat{ii},vstd{ii});
         
         % report progress
         if (mod(ii,round(nframes./10))) == 0
@@ -590,7 +592,7 @@ if par.plt_decomp_uncer == 1
     colormap(t(2),batlow)
     
     t(3) = nexttile; hold on
-    plt_data(x_regrid,y_regrid,model_corr,lonlim,latlim,clim,'Correlation (mm/yr)',fault_trace,borders)
+    plt_data(x_regrid,y_regrid,model_corr,lonlim,latlim,[-1 1],'Correlation (mm/yr)',fault_trace,borders)
     colormap(t(3),batlow)
 
 end

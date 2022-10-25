@@ -1,4 +1,4 @@
-function vstd_scaled = scale_vstd(par,x,y,vstd)
+function [vstd_scaled,rms_misfit] = scale_vstd(par,x,y,vstd)
 %=================================================================
 % function vstd_scale()
 %-----------------------------------------------------------------
@@ -12,6 +12,7 @@ function vstd_scaled = scale_vstd(par,x,y,vstd)
 %
 % OUTPUT:    
 %   vstd_scale: scaled uncertainty (array, same size as vstd)
+%   rms_misfit: rms misfit between the model and vstd
 %   
 % Andrew Watson     19-10-2022
 %                                                                  
@@ -50,7 +51,6 @@ end
 
 % generate weights
 W = 1 ./ (bin_stds + bin_mids./max_dist);
-% W = ones(size(bin_medians));
 
 % define objective function to minimise
 switch par.scale_vstd_model
@@ -81,10 +81,15 @@ switch par.scale_vstd_model
     case 'sph'
         vstd_scaled = vstd .* (m_fit(2)./spherical_model(m_fit,ref_dists));
         bin_fit = spherical_model(m_fit,bin_mids);
+        point_fit = spherical_model(m_fit,ref_dists(:));
     case 'exp'
         vstd_scaled = vstd .* (m_fit(2)./exponential_model(m_fit,ref_dists));
         bin_fit = exponential_model(m_fit,bin_mids);
+        point_fit = exponential_model(m_fit,ref_dists(:));
 end
+
+% calculate rms
+rms_misfit = rms(vstd(:)-point_fit,'omitnan');
 
 %% plot original and scaled
 
