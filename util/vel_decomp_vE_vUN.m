@@ -1,4 +1,4 @@
-function [m_east,m_up,var_east,var_up,condG_threshold_mask,var_threshold_mask] ...
+function [m_east,m_up,var_east,var_up,model_corr,condG_threshold_mask,var_threshold_mask] ...
     = vel_decomp_vE_vUN(par,vel,vstd,compE,compN,compU,gnss_N,gnss_sN,both_coverage)
 %=================================================================
 % function vel_decomp()
@@ -39,6 +39,7 @@ m_UN = nan(rowcol);
 m_east = nan(rowcol);
 var_UN = nan(rowcol);
 var_east = nan(rowcol);
+model_corr = nan(rowcol);
 var_threshold_mask = zeros(rowcol);
 condG_threshold_mask = zeros(rowcol);
 
@@ -113,6 +114,9 @@ for ii = 1:size(vel,1)
         continue
     end
 
+    % calculate model parameter correlation
+    model_corr(jj(ii),kk(ii)) = Qm(1,2)./(Qm(1,1).*Qm(2,2));
+    
     % save
     m_UN(jj(ii),kk(ii)) = m(1);
     m_east(jj(ii),kk(ii)) = m(2);    

@@ -47,6 +47,10 @@ par.out_prefix = getparval(cfgcell,'out_prefix',[]);
 
 %% processing toggles
 
+% scale input velocity uncertainties
+par.scale_vstd = getparval(cfgcell,'scale_vstd',0);
+par.scale_vstd_model = getparval(cfgcell,'scale_vstd_model','sph');
+
 % tie to gnss
 par.tie2gnss = getparval(cfgcell,'tie2gnss',0);
 par.ref_poly_order = getparval(cfgcell,'ref_poly_order',[]);
@@ -98,6 +102,10 @@ par.plt_borders = getparval(cfgcell,'plt_borders',0);
 
 % plot input vels
 par.plt_input_vels = getparval(cfgcell,'plt_input_vels',0);
+
+% plot scaled uncertainties
+par.plt_scale_vstd_indv = getparval(cfgcell,'plt_scale_vstd_indv',0);
+par.plt_scale_vstd_all = getparval(cfgcell,'plt_scale_vstd_all',0);
 
 % plot merged tracks
 par.plt_merge_tracks = getparval(cfgcell,'plt_merge_tracks',0);
