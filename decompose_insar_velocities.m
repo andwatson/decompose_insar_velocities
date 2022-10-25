@@ -126,7 +126,7 @@ desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
 
 % fault traces
 if par.plt_faults == 1
-    fault_trace = single(readmatrix(par.faults_file));
+    fault_trace = single(readmatrix(par.faults_file,'FileType','text'));
 else
     fault_trace = [];
 end
@@ -156,7 +156,7 @@ if par.plt_input_vels == 1
     
     % set plotting parameters
     lonlim = [min(cellfun(@min,lon)) max(cellfun(@max,lon))]; 
-    latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))]; close 
+    latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))];
     clim = [-10 10];
     
     % temporarily apply mask for plotting
@@ -269,7 +269,7 @@ if par.scale_vstd == 1
     
         % set plotting parameters
         lonlim = [min(cellfun(@min,lon)) max(cellfun(@max,lon))]; 
-        latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))]; close 
+        latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))]; 
         clim = [0 3];
 
         % temporarily apply mask for plotting
