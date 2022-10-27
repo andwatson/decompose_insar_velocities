@@ -146,13 +146,17 @@ Options are:
 ## Input file formats
 
 GNSS file should be a .mat file containing structure with the following:
+```
     gnss_field.x - vector of x axis coords (n)
     gnss_field.y - vector of y axis coords (m)
     gnss_field.N - grid of north gnss vels (mxn)
     gnss_field.E - grid of east gnss vels (mxn)
+```
 Optional extras:
+```
     gnss_field.sN - grid of north 1-sigma uncertainties (mxn)
     gnss_field.sE - grid of east 1-sigma uncertainties (mxn)
+```
 
 ---
 
