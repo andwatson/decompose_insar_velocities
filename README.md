@@ -45,19 +45,46 @@ DIV works through the following processing steps, many of which can be altered u
 ---
 
 ## Config file
-The example config file provides short descriptions of each option. Below, we give greater details:
+The example config file provides short descriptions of each option. Below, I give further details.
 
 ### para_cores
 The number of parallel processes to run for the decomposition, which is performed pixel-by-pixel.
+Setting to zero use a `for` loop as opposed to a `parfor` loop.
 
-### ties2gnss
-Shift relative InSAR velocities into a common reference frame defined by a network of GNSS velocities (e.g. relative -> Eurasia-fixed).
-This is performed by calculating the residual between the interpolated East and North GNSS velocities projected into the line-of-sight of each frame, and the InSAR line-of-sight velocities.
-We extract the long-wavelength signals from the residual, and subtract these from each frame.
-Two methods for handling the residuals are currently included:
+### scale_vstd
+LiCSBAS generates uncertainties using bootstrapping, with a trend towards lower uncertainties close to the reference point due to a reduction in the scatter of the displacement series.
+This reference point bias can be mitigated by calculating the difference between all points in each uncertainty map and fitting either a spherical or exponential model.
+Each uncertainty is then scaled by the ratio between the sill and the model value at that distance from the reference point.
+See Ou et al. (2022) for a full breakdown.
+
+### scale_vstd_model
+Semivariogram model used to scale the uncertainties.
+ - exp - Use an exponential model.
+ - sph - Use a spherical model. 
+
+### tie2gnss
+Shift relative InSAR velocities into a common reference frame defined by interpolated GNSS velocities (e.g. relative -> Eurasia-fixed).
+See Hussain et al. (2016), Weiss et al. (2020), and Ou et al. (2022) for examples.
+The steps are as follows for each frame:
+ 1. Project the interpolated GNSS velocities into the satellite line-of-sight.
+ 2. Calculate the residual between the InSAR and the projected GNSS.
+ 3. Apply a mask to the residuals using a linear deramp and upper and lower limits, to mitigate the impact of large, short-wavelength signals (e.g. subsidece).
+ 4. Either fit a polynomial surface to the residuals, or apply a gaussian filter, to mitigate short-wavelength signals.
+ 5. Subtract the result from the InSAR.
+
+Two methods for smoothing the residuals are currently included:
  - 0 - disables the referencing.
- - 1 - fit a 2nd order polynomial surface to the residual (based on Weiss et al. 2020).
- - 2 - apply a gaussian filter to the residuals (based on Xu et al. 2021).
+ - 1 - fit a polynomial surface to the residuals (based on Weiss et al. 2020).
+ - 2 - apply a gaussian filter to the residuals (inspired by Xu et al. 2021).
+
+### ref_poly_order
+Set the order of the polynomial surface used for referencing when tie2gnss = 1.
+ - 1 - first order (ax + by + c).
+ - 2 - second order (ax^2 + b^y2 + cxy + dx + ey + f).
+
+### ref_filter_window_size
+Set the window size for the sliding Gaussian filter used to smooth the residuals when tie2gnss = 2.
+Must be an odd number of pixels (so the map area covered by the filter will change if the resolution changes).
 
 ### ds_factor and ds_method
 Applies downsampling to the input velocities, taking either the mean or the median of a given window size (ds_factor x ds_factor).
@@ -65,20 +92,20 @@ This can improve the computational requirements of later steps (useful for testi
 
 ### usemask
 Using pre-masked velocities can lead to smearing or shrinking of the masked area if additional downsapling is performed within DIV.
-Hence, we recommend providing unmasked velocities and a matching mask file, which is then optionally applied after both regridding and downsampling.
+Hence, I recommend providing unmasked velocities and a matching mask file, which is then optionally applied after both regridding and downsampling.
 
 ### merge_tracks_along
 Merge overlapping frames within each track.
-This requires that the frame directories have been given in order for each track.
+This requires that the frame directories have been given in order for each track, although gaps are allowed.
 Options are:
  - 0 - disables.
  - 1 - apply the shift to each frame, but leave the frames seperate (i.e. don't take the mean to fully merge them).
- - 2 - take the mean of overlapping points, combining multiple frames into a single array.
+ - 2 - take the mean of overlapping points, combining multiple frames into a single velocity field.
 
 ### merge_tracks_along_func
-Function used to perform the track merging. This is what is fit to the overlapping pixels and then removed to perform the "merge".
- - 0 - scalar offset
- - 1 - first order polynomial plane (c, x, y)
+Function used to perform the track merging. This is what is fit to the overlapping pixels and then removed from the entire frame to perform the "merge".
+ - 0 - scalar offset.
+ - 1 - first order polynomial plane (ax + by + c).
 
 ### merge_tracks_across
 Merge adjacent tracks into a continuous velocity field.
@@ -90,15 +117,27 @@ Options are:
  - 1 - enables
 
 ### plate_motion
-Apply a correction for the "reference frame bias" caused by absolute rigid plate motions in an ITRF reference frame.
-The "relative" LOS velocities produce by e.g. LiCSBAS are technically in the reference frame of the satellite orbit, which is ITRF.
-This means that any rigid translation of a plate (i.e. not the deformation that we want to measure) will be captured.
+Apply a correction for the "reference frame bias" caused by absolute rigid plate motions in an ITRF reference frame (Stephenson et al. 2022).
+The "relative" LOS velocities produce by e.g. LiCSBAS are technically in the reference frame of the satellite orbit, which is ITRF 2014.
+This means that any rigid translation of a plate (i.e. not the deformation that we normally want to measure) will be captured.
 While this velocity tends to be nearly constant across the area of a frame, the varying LOS makes it appear as a ramp in the range direction.
 For more details see "https://www.essoar.org/doi/10.1002/essoar.10511538.1".
-We can mitigate this bias by taking rigid no-net-rotation plate velocities in ITRF (see the UNAVCO plate motion calculator) and projecting them into LOS.
+This bias can be mitigated by taking rigid no-net-rotation plate velocities in ITRF (see the UNAVCO plate motion calculator) and projecting them into LOS.
 Options are:
  - 0 - disables
  - 1 - enables
+
+### gnss_uncer
+Propagate uncertainties on the interpolated GNSS velocities through the decomposition.
+Options are:
+ - 0 - disables
+ - 1 - enables
+
+### decomp_method
+Set the method for decomposing the line-of-sight velocities into East and Vertical velocities.
+ - 1 - project the North GNSS velocities into line-of-sight for each frame, and subtract them from the InSAR. Then, decompose into East and Vertical.
+ - 2 - include the North GNSS velocities as an input to the decomposition, and solve for East, North, and Vertical.
+ - 3 - decompose into East and a joint Vertical-North plane, and then split the latter into Vertical and North components (see Ou et al. 2022).
 
 ### condG_threshold
 This is a threshold on the value of cond(G), where G is the design matrix for the velocity decomposition.
@@ -122,35 +161,94 @@ Options are:
  - 0 - disables
  - 1 - enables
 
+---
+
+For the following parameters, the only options are 0 (disables) or 1 (enables).
+
 ### save_geotif
 Write the decomposed East, Vertical, and North velocities to geotifs, using the same projection as the inputs.
-Options are:
- - 0 - disables
- - 1 - enables
 
 ### plt_faults
 Plot fault traces on the decomposed velocity maps.
-Options are:
- - 0 - disables
- - 1 - enables
 
 ### plt_borders
 Plot country borders on the decomposed velocity maps.
-Options are:
- - 0 - disables
- - 1 - enables
 
 ### plt_input_vels
 Plot the input vels as a mosaic of all frames. Useful for checking that the vels have loaded in correctly.
-Options are:
- - 0 - disables
- - 1 - enables
+
+### plt_scale_vstd_indv
+For each frame, plot the original uncertainties, the scaled uncertianties, and the semivariogram. 
+
+### plt_scale_vstd_all
+Plot all scaled uncertainties, split into ascending and descending.
 
 ### plt_merge_tracks
-Plot the merged tracks if merge_tracks_along has been set to 1 or 2.
-Options are:
- - 0 - disables
- - 1 - enables
+Plot the merged tracks, split into ascending and descending.
+
+### plt_merge_along_corr
+For each track, plot the original frame velocities, and the new merged velocity(s).
+
+### plt_merge_along_resid
+Plot the residual overlap velocities for all frames.
+
+### plt_mask_asc_desc
+Plot the merged ascending and descending masks
+
+### plt_plate_motion
+Plot the InSAR velocities after the plate motion correction has been applied.
+
+### plt_plate_motion_indv
+Plot individual plate motion corrections, showing the original velocities, the correction, and the corrected velocities.
+
+### plt_ref_gnss_surfaces
+Plot the referencing surfaces for all frames/tracks, split into ascending and descending.
+
+### plt_ref_gnss_indv
+Plot the original relative velocities, the referencing surface, and the referrenced velocities for each frame/track.
+
+### plt_decomp_uncer
+Plot the model uncertainties associated with the decomposed East and Vertical velocities.
+
+### plt_threshold_masks
+Plot the masks for the cond(G) and model variance thresholds.
+
+---
+
+The following parameters are all paths to inputs files. I recommend using absolute paths, but relative paths will also work.
+
+### gnss_file
+Path to a .mat file containing the interpolated GNSS velocities.
+
+### faults_file
+Path to a text file containing coordinates for faults (see plotting/misc/).
+
+### borders_file
+Path to a .mat file containing country border polygons (see plotting/misc/).
+
+### plate_motion_file
+Path to a text file containing plate velocities used to apply the plate motion correction.
+
+### out_path
+Path to save output geotifs too.
+
+### out_prefix
+Prefix for outputs, which then has "vE" etc. appended to it.
+
+---
+
+### id_vel, id_vstd, id_e, id_n, id_u, id_mask
+These are file ID's used to select which inputs to load from every given framedir.
+The file is selected by searching for `framedir/*id*`.
+This allows for multiple versions of the velocities to be toggled between without having to change the framedir paths.
+
+---
+
+*Weiss, J. R., Walters, R. J., Morishita, Y., Wright, T. J., Lazecky, M., Wang, H., ... & Parsons, B. (2020). High‐resolution surface velocities and strain for Anatolia from Sentinel‐1 InSAR and GNSS data. Geophysical Research Letters, 47(17), e2020GL087376.*
+
+*Hussain, E., Hooper, A., Wright, T. J., Walters, R. J., & Bekaert, D. P. (2016). Interseismic strain accumulation across the central North Anatolian Fault from iteratively unwrapped InSAR measurements. Journal of Geophysical Research: Solid Earth, 121(12), 9000-9019.*
+
+*Xu, X., Sandwell, D. T., Klein, E., & Bock, Y. (2021). Integrated Sentinel‐1 InSAR and GNSS Time‐Series Along the San Andreas Fault System. Journal of Geophysical Research: Solid Earth, 126(11), e2021JB022579.*
 
 ---
 
