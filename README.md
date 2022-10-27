@@ -254,6 +254,7 @@ This allows for multiple versions of the velocities to be toggled between withou
 
 ## Input file formats
 
+### gnss_file
 GNSS file should be a .mat file containing structure with the following:
 ```
     gnss_field.x - vector of x axis coords (n)
@@ -266,6 +267,45 @@ Optional extras:
     gnss_field.sN - grid of north 1-sigma uncertainties (mxn)
     gnss_field.sE - grid of east 1-sigma uncertainties (mxn)
 ```
+
+### faults_file
+Text file containing fault lines for plotting.
+Two column (x y), with each fault segement ended by a ">".
+See the GEM faults in `plotting/misc/` for an example.
+
+### borders_file
+A .mat file containing a structure that defines country outline polygons.
+See `borderdata.mat` in `plotting/misc/` for an example.
+This contains polygons for most countries.
+```
+    borders.lon = cell array of vectors containing the longitudes for each polygon
+    borders.lat = cell array of vectors containing the latitudes for each polygon
+    borders.places = cell array of strings giving the name of each polygon
+```
+
+### plate_motion_file
+Text file of plate motion velocities.
+Format is [lon lat East North]. No uncertainties are required.
+
+### vel
+All velocities are expected to be in geotif format.
+These can be easily generated from LiCSBAS outputs using the `LiCSBAS_flt2geotif.py` function.
+The spatial extent and pixel spacing of the velocities is read from the geotif metadata.
+DIV assumes that positive velocities show motion towards the satellite (default for LiCSBAS).
+
+### vstd
+One sigma uncertainties for each velocity.
+
+### mask
+0 or 1 value for all velocities.
+0 = mask pixel.
+1 = keep pixel.
+Areas outside the velocity field itself can be set to NaN.
+
+### compE, compU, compN
+Unit vector components (0-1) calculated from the line-of-sight and azimuth of the satellite, for each point.
+These are used to project ENU motion into LOS, and vice versa.
+Incidence angle and azimuth can be calculated from them (see `vel_decomp_vE_vUN`).
 
 ---
 
