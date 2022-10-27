@@ -11,10 +11,23 @@ Andrew Watson, 2022
 ---
 
 ## Processing stages
-"decompose_insar_velocities" (DIV) works through the following processing steps, many of which can be altered using within the config file:
-1.
-2.
-3.
+"decompose_insar_velocities" (DIV) works through the following processing steps, many of which can be altered using within the config file.
+
+1. Read the input parameter file that defines how the rest of the script will function.
+2. Load the line-of-sight velocities, uncertainties, and look vector components for all frames. These are stored in a Matlab cell array, as the dimensions may vary. Optionally, also load a mask, interpolated GNSS velocities, and fault and border polygons for plotting.
+3. Check and downsample the look vector components if required.
+4. Optionally perform additional downsampling of all inputs.
+5. Optionally scale the velocity uncertainties using a semivariogram to mitigate the impact of the reference point (Ou et al. 2022).
+6. Interpolate inputs onto a common grid, required so that we can perform calculations using data from multiple inputs.
+7. Optionally merge adajcent frames along-track. If adjacent frames do not overlap, either because they are spatially seperated or because of masking, then the track will be split into two subtracks.
+8. Optionally correct for the "reference frame effect" (Stephenson et al. 2022), which can produce velocity ramps in the range direction. Requires ITRF2014 plate velocities in No-Net-Rotation. These can be generated using the Unavco Plate Motion Calculator (https://www.unavco.org/software/geodetic-utilities/plate-motion-calculator/plate-motion-calculator.html).
+9. Shift the relative los-of-sight InSAR velocities into a common reference frame, by tying them to GNSS velocities. This is required to perform the decomposition.
+10. Optionally generate frame overlap statistics, useful for assessing noise in the InSAR velocities.
+11. Perform the velocity decomposition to estimate East and Vertical velocities.
+12. Optionally plot and save outputs. 
+
+*Ou, Q., Daout, S., Weiss, J. R., Shen, L., Lazecký, M., Wright, T. J., & Parsons, B. E. (2022). Large‐Scale Interseismic Strain Mapping of the NE Tibetan Plateau From Sentinel‐1 Interferometry. Journal of Geophysical Research: Solid Earth, 127(6), e2022JB024176.*
+*Stephenson, O. L., Liu, Y. K., Yunjun, Z., Simons, M., & Rosen, P. (2022). The Impact of Plate Motions on Long-Wavelength InSAR-Derived Velocity Fields. Unpublished.*
 
 ---
 
