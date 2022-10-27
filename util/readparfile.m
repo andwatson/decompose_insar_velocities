@@ -121,6 +121,9 @@ par.plt_merge_along_resid = getparval(cfgcell,'plt_merge_along_resid',0);
 % plot reference to gnss
 par.plt_ref_gnss_indv = getparval(cfgcell,'plt_ref_gnss_indv',0);
 
+% plot all referencing surfaces
+par.plt_ref_gnss_surfaces = getparval(cfgcell,'plt_ref_gnss_surfaces',0);
+
 % plot ascending and descending masks
 par.plt_mask_asc_desc = getparval(cfgcell,'plt_mask_asc_desc',0);
 

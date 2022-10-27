@@ -165,25 +165,27 @@ for ii = 1:nframes
 
 end
 
-% plot referencing functions
-lonlim = [min(x) max(x)];
-latlim = [min(y) max(y)];
-clim = [-10 10];
-load('plotting/cpt/vik.mat')
+if par.plt_ref_gnss_surfaces == 1
+    % plot referencing functions
+    lonlim = [min(x) max(x)];
+    latlim = [min(y) max(y)];
+    clim = [-10 10];
+    load('plotting/cpt/vik.mat')
 
-f = figure();
-f.Position([1 3 4]) = [600 1600 600];
-t = tiledlayout(1,2,'TileSpacing','compact');
-title(t,'Referencing surfaces')
+    f = figure();
+    f.Position([1 3 4]) = [600 1600 600];
+    t = tiledlayout(1,2,'TileSpacing','compact');
+    title(t,'Referencing surfaces')
 
-% ascending tracks
-t(1) = nexttile; hold on
-plt_data(x,y,gnss_resid_plane(:,:,asc_frames_ind),lonlim,latlim,clim,'Ascending (mm/yr)',[],[])
-colormap(t(1),vik)
+    % ascending tracks
+    t(1) = nexttile; hold on
+    plt_data(x,y,gnss_resid_plane(:,:,asc_frames_ind),lonlim,latlim,clim,'Ascending (mm/yr)',[],[])
+    colormap(t(1),vik)
 
-% descending tracks
-t(2) = nexttile; hold on
-plt_data(x,y,gnss_resid_plane(:,:,desc_frames_ind),lonlim,latlim,clim,'Descending (mm/yr)',[],[])
-colormap(t(2),vik)
-
+    % descending tracks
+    t(2) = nexttile; hold on
+    plt_data(x,y,gnss_resid_plane(:,:,desc_frames_ind),lonlim,latlim,clim,'Descending (mm/yr)',[],[])
+    colormap(t(2),vik)
+end
+    
 end
