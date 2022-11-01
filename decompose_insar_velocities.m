@@ -399,6 +399,7 @@ if par.usemask == 1
     mask_regrid(isnan(mask_regrid)) = 0;
     mask_regrid(mask_regrid>=0.5) = 1; mask_regrid(mask_regrid<0.5) = 0;
     vel_regrid(mask_regrid==0) = NaN;
+    vstd_regrid(mask_regrid==0) = NaN;
     
     % convert to logical
     mask_regrid = logical(mask_regrid);
