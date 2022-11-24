@@ -66,9 +66,15 @@ insarpar.dir(to_remove) = [];
 %% load inputs
 
 disp('Loading inputs')
+% larger arrays stored as single, which is sufficient given the
+% uncertainties
 
 % number of velocity maps inputted
 nframes = length(insarpar.dir);
+
+if length(unique(insarpar.dir)) ~= nframes
+    error('At least one framedir has been repeated, please check your config file.')
+end
 
 % pre-allocate
 frames = cell(1,nframes);
@@ -89,7 +95,7 @@ for ii = 1:nframes
     % load velocities
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_vel '*']);
     [lon{ii},lat{ii},vel{ii},dx{ii},dy{ii}] ...
-        = read_geotiff([insarpar.dir{ii} namestruct.name]);
+        = read_geotiff([insarpar.dir{ii} namestruct.name],'single');
 
     % test that vel contains valid pixels, and remove if not
     if sum(~isnan(vel{ii}),'all') == 0
@@ -100,22 +106,22 @@ for ii = 1:nframes
 
     % load velocity errors
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_vstd '*']);
-    [~,~,vstd{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name]);
+    [~,~,vstd{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name],'single');
 
     % load East, North, and Up components
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_e '*']);
-    [lon_comp{ii},lat_comp{ii},compE{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name]);
+    [lon_comp{ii},lat_comp{ii},compE{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name],'single');
 
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_n '*']);
-    [~,~,compN{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name]);
+    [~,~,compN{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name],'single');
 
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_u '*']);
-    [~,~,compU{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name]);
+    [~,~,compU{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name],'single');
     
     % load mask
     if par.usemask == 1
         namestruct = dir([insarpar.dir{ii} '*' insarpar.id_mask '*']);
-        [~,~,mask{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name]);
+        [~,~,mask{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name],'single');
     end
     
 end
@@ -314,10 +320,10 @@ dx = min(cellfun(@min,dx)); dy = min(cellfun(@min,dy));
 [xx_regrid,yy_regrid] = meshgrid(x_regrid,y_regrid); 
 
 % pre-allocate
-vel_regrid = zeros([size(xx_regrid) nframes]);
-vstd_regrid = zeros(size(vel_regrid)); mask_regrid = zeros(size(vel_regrid));
-compE_regrid = zeros(size(vel_regrid)); compN_regrid = zeros(size(vel_regrid));
-compU_regrid = zeros(size(vel_regrid));
+vel_regrid = single(zeros([size(xx_regrid) nframes]));
+vstd_regrid = single(zeros(size(vel_regrid))); mask_regrid = single(zeros(size(vel_regrid)));
+compE_regrid = single(zeros(size(vel_regrid))); compN_regrid = single(zeros(size(vel_regrid)));
+compU_regrid = single(zeros(size(vel_regrid)));
 
 for ii = 1:nframes
     
