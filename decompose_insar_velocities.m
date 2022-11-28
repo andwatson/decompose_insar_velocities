@@ -83,6 +83,7 @@ end
 % colour palettes  (https://www.fabiocrameri.ch/colourmaps/)
 load('plotting/cpt/vik.mat')
 load('plotting/cpt/batlow.mat')
+cpt.vik = vik; cpt.batlow = batlow;
 
 %% preview inputs
 
@@ -391,7 +392,7 @@ if par.merge_tracks_along > 0
     disp('Merging frames along-track')
     
     [vel_regrid,compE_regrid,compN_regrid,compU_regrid,vstd_regrid,tracks] ...
-        = merge_frames_along_track(par,x_regrid,y_regrid,vel_regrid,...
+        = merge_frames_along_track(par,cpt,x_regrid,y_regrid,vel_regrid,...
         frames,compE_regrid,compN_regrid,compU_regrid,vstd_regrid);
     
     % update number of frames and indexes if frames have been merged
@@ -486,11 +487,11 @@ title(t,'Decomposed velocities')
 
 t(1) = nexttile; hold on
 plt_data(x_regrid,y_regrid,m_up,lonlim,latlim,clim,'Vertical (mm/yr)',fault_trace,borders)
-colormap(t(1),vik)
+colormap(t(1),cpt.vik)
 
 t(2) = nexttile; hold on
 plt_data(x_regrid,y_regrid,m_east,lonlim,latlim,clim,'East (mm/yr)',fault_trace,borders)
-colormap(t(2),vik)
+colormap(t(2),cpt.vik)
 
 % North and  coverage
 f = figure();
@@ -522,15 +523,15 @@ if par.plt_decomp_uncer == 1
 
     t(1) = nexttile; hold on
     plt_data(x_regrid,y_regrid,var_up,lonlim,latlim,clim,'Vertical (mm/yr)',fault_trace,borders)
-    colormap(t(1),batlow)
+    colormap(t(1),cpt.batlow)
 
     t(2) = nexttile; hold on
     plt_data(x_regrid,y_regrid,var_east,lonlim,latlim,clim,'East (mm/yr)',fault_trace,borders)
-    colormap(t(2),batlow)
+    colormap(t(2),cpt.batlow)
     
     t(3) = nexttile; hold on
     plt_data(x_regrid,y_regrid,model_corr,lonlim,latlim,[-1 1],'Correlation (mm/yr)',fault_trace,borders)
-    colormap(t(3),batlow)
+    colormap(t(3),cpt.batlow)
 
 end
 
