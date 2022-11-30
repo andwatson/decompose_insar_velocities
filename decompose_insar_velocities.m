@@ -66,8 +66,6 @@ insarpar.dir(to_remove) = [];
 %% load inputs
 
 disp('Loading inputs')
-% larger arrays stored as single, which is sufficient given the
-% uncertainties
 
 % number of velocity maps inputted
 nframes = length(insarpar.dir);
@@ -78,11 +76,11 @@ end
 
 % load main inputs
 [lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,frames,...
-    asc_frames_ind,desc_frames_ind,fault_trace,gnss_field,borders] = load_inputs(par,insarpar);
+    asc_frames_ind,desc_frames_ind,fault_trace,gnss,borders] = load_inputs(par,insarpar);
 
 % colour palettes  (https://www.fabiocrameri.ch/colourmaps/)
-load('plotting/cpt/vik.mat')
-load('plotting/cpt/batlow.mat')
+vik = importdata('plotting/cpt/vik.mat');
+batlow = importdata('plotting/cpt/batlow.mat');
 cpt.vik = vik; cpt.batlow = batlow;
 
 %% preview inputs
@@ -156,27 +154,8 @@ if par.ds_factor > 0
     
     disp(['Downsampling inputs by a factor of ' num2str(par.ds_factor)])
     
-    for ii = 1:nframes
-    
-        [vel{ii},lon{ii},lat{ii}] ...
-            = downsample_array(vel{ii},par.ds_factor,par.ds_factor,par.ds_method,lon{ii},lat{ii});        
-        [vstd{ii},~,~] = downsample_array(vstd{ii},par.ds_factor,par.ds_factor,par.ds_method);
-        
-        [compE{ii},lon_comp{ii},lat_comp{ii}] ...
-            = downsample_array(compE{ii},par.ds_factor,par.ds_factor,par.ds_method,lon_comp{ii},lat_comp{ii});
-        [compN{ii},~,~] = downsample_array(compN{ii},par.ds_factor,par.ds_factor,par.ds_method);
-        [compU{ii},~,~] = downsample_array(compU{ii},par.ds_factor,par.ds_factor,par.ds_method);
-        
-        if par.usemask == 1
-            [mask{ii},~,~] ...
-                =  downsample_array(mask{ii},par.ds_factor,par.ds_factor,par.ds_method);
-        end
-        
-        if (mod(ii,round(nframes./10))) == 0
-            disp([num2str(round((ii./nframes)*100)) '% completed']);
-        end
-        
-    end
+    [lon,lat,vel,vstd,compE,compN,compU,mask] ...
+        = downsamp(par,nframes,lon,lat,vel,vstd,compE,compN,compU,mask);
     
 end
 
@@ -300,15 +279,15 @@ for ii = 1:nframes
 end
 
 % resample gnss
-if par.tie2gnss ~= 0
-    [xx_gnss,yy_gnss] = meshgrid(gnss_field.x,gnss_field.y);
-    gnss_E = interp2(xx_gnss,yy_gnss,gnss_field.E,xx_regrid,yy_regrid);
-    gnss_N = interp2(xx_gnss,yy_gnss,gnss_field.N,xx_regrid,yy_regrid);
+if par.ref2gnss == 2
+    [xx_gnss,yy_gnss] = meshgrid(gnss.x,gnss.y);
+    gnss_E = interp2(xx_gnss,yy_gnss,gnss.E,xx_regrid,yy_regrid);
+    gnss_N = interp2(xx_gnss,yy_gnss,gnss.N,xx_regrid,yy_regrid);
     
     % resample gnss uncertainties if using
     if par.gnss_uncer == 1
-        gnss_sE = interp2(xx_gnss,yy_gnss,gnss_field.sE,xx_regrid,yy_regrid);
-        gnss_sN = interp2(xx_gnss,yy_gnss,gnss_field.sN,xx_regrid,yy_regrid);
+        gnss_sE = interp2(xx_gnss,yy_gnss,gnss.sE,xx_regrid,yy_regrid);
+        gnss_sN = interp2(xx_gnss,yy_gnss,gnss.sN,xx_regrid,yy_regrid);
     else
         gnss_sE = [];
         gnss_sN = [];
@@ -422,12 +401,18 @@ end
 
 %% tie to gnss
 % Shift InSAR velocities into the same reference frame as the GNSS
-% velocities. Method is given by par.tie2gnss. 
+% velocities. Method is given by par.ref2gnss. 
 
-if par.tie2gnss ~= 0
+if par.ref2gnss == 1
+    disp('Referencing InSAR to GNSS station velocities')
+    [vel_regrid] = ref_to_gnss_stations(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
+        compE_regrid,compN_regrid,gnss,asc_frames_ind,desc_frames_ind);   
+    
+elseif par.ref2gnss == 2
     disp('Referencing InSAR to interpolated GNSS velocities')
-    [vel_regrid] = ref_to_gnss(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
-        compE_regrid,compN_regrid,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind);    
+    [vel_regrid] = ref_to_gnss_fields(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
+        compE_regrid,compN_regrid,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind);
+    
 end
 
 %% calculate frame overlaps if requested

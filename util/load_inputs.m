@@ -1,5 +1,5 @@
 function [lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,frames,...
-    asc_frames_ind,desc_frames_ind,fault_trace,gnss_field,borders] = load_inputs(par,insarpar)
+    asc_frames_ind,desc_frames_ind,fault_trace,gnss,borders] = load_inputs(par,insarpar)
 %=================================================================
 % function [] = load_inputs()
 %-----------------------------------------------------------------
@@ -15,6 +15,8 @@ function [lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,frames
 %                                                                  
 %=================================================================
 
+%% setup
+
 % number of velocity maps inputted
 nframes = length(insarpar.dir);
 
@@ -25,6 +27,8 @@ lon_comp = cell(size(lon)); lat_comp = cell(size(lon));
 dx = cell(size(lon)); dy = cell(size(lon));
 vel = cell(size(lon)); vstd = cell(size(lon)); mask = cell(size(lon));
 compE = cell(size(lon)); compN = cell(size(lon)); compU = cell(size(lon));
+
+%% load insar
 
 % for each velocity map
 for ii = 1:nframes
@@ -72,17 +76,50 @@ end
 asc_frames_ind = find(cellfun(@(x) strncmp('A',x(4),4), frames));
 desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
 
+%% load gnss
+
+% load gnss vels and check if uncertainties are present (if requested)
+
+switch par.ref2gnss
+    case 0
+        disp('Not loading GNSS vels - this may break other functions')
+        
+    case 1
+        % GNSS file should be a (at least) six column text file of:
+        % lon lat vE vN sE sN (cor)
+        
+        % check extension
+        [~,~,ext] = fileparts(par.gnss_file);
+        if strcmp(ext,'.mat')
+            error('GNSS stations requested, gnss_file should not end .mat')
+        end
+        
+        gnss = readmatrix(par.gnss_file);
+        
+    case 2
+        
+        % check extension
+        [~,~,ext] = fileparts(par.gnss_file);
+        if ~strcmp(ext,'.mat')
+            error('GNSS fields requested, gnss_file should end .mat')
+        end
+        
+        % GNSS file is interpolated velocities in a .mat
+        gnss = importdata(par.gnss_file);
+
+        % check for uncertainties
+        if par.gnss_uncer == 1 && (~isfield(gnss_field,'sE') || ~isfield(gnss_field,'sN'))
+            error('Propagation of GNSS uncertainties requested, but GNSS mat file does not contain sE and sN')
+        end
+end
+
+%% load plotting files
+
 % fault traces
 if par.plt_faults == 1
     fault_trace = single(readmatrix(par.faults_file,'FileType','text'));
 else
     fault_trace = [];
-end
-
-% load gnss vels and check if uncertainties are present (if requested)
-load(par.gnss_file);
-if par.gnss_uncer == 1 && (~isfield(gnss_field,'sE') || ~isfield(gnss_field,'sN'))
-    error('Propagation of GNSS uncertainties requested, but GNSS mat file does not contain sE and sN')
 end
 
 % borders

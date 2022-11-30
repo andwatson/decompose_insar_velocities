@@ -1,4 +1,4 @@
-function [vel] = ref_to_gnss(par,cpt,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind)
+function [vel] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind)
 %=================================================================
 % function ref_to_gnss()
 %-----------------------------------------------------------------

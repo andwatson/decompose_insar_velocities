@@ -52,9 +52,11 @@ par.scale_vstd = getparval(cfgcell,'scale_vstd',0);
 par.scale_vstd_model = getparval(cfgcell,'scale_vstd_model','sph');
 
 % tie to gnss
-par.tie2gnss = getparval(cfgcell,'tie2gnss',0);
+par.ref2gnss = getparval(cfgcell,'ref2gnss',0);
+par.ref_type = getparval(cfgcell,'ref_type',[]);
 par.ref_poly_order = getparval(cfgcell,'ref_poly_order',[]);
 par.ref_filter_window_size = getparval(cfgcell,'ref_filter_window_size',[]);
+par.ref_station_radius = getparval(cfgcell,'ref_station_radius',0);
 
 % use mask
 par.usemask = getparval(cfgcell,'usemask',0);
