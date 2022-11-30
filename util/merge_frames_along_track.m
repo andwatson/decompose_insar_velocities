@@ -1,5 +1,5 @@
 function [track_vel,track_compE,track_compN,track_compU,track_vstd,unique_tracks] ...
-    = merge_frames_along_track(par,x,y,vel,frames,compE,compN,compU,vstd)
+    = merge_frames_along_track(par,cpt,x,y,vel,frames,compE,compN,compU,vstd)
 %=================================================================
 % function merge_frames_along_track()
 %-----------------------------------------------------------------
@@ -9,6 +9,7 @@ function [track_vel,track_compE,track_compN,track_compU,track_vstd,unique_tracks
 %                                                                  
 % INPUT:                                                           
 %   par: parameter structure from readparfile.
+%   cpt: structure containing colour palettes
 %   x, y: vectors of longitude and latitude
 %   vel: regridded velocities (3D array)
 %   compE, compN, compU: regridded component vectors (3D arrays)
@@ -281,7 +282,6 @@ if par.plt_merge_tracks == 1 && par.merge_tracks_along == 2
     lonlim = [min(x) max(x)];
     latlim = [min(y) max(y)];
     clim = [-10 10];
-    load('plotting/cpt/vik.mat')
     
     % reload borders for ease
     if par.plt_borders == 1
@@ -298,12 +298,12 @@ if par.plt_merge_tracks == 1 && par.merge_tracks_along == 2
     % plot ascending tracks
     t(1) = nexttile; hold on
     plt_data(x,y,track_vel(:,:,unique_tracks_asc_ind),lonlim,latlim,clim,'Ascending (mm/yr)',[],borders)
-    colormap(t(1),vik)
+    colormap(t(1),cpt.vik)
     
     % plot descending tracks
     t(2) = nexttile; hold on
     plt_data(x,y,track_vel(:,:,unique_tracks_desc_ind),lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
-    colormap(t(2),vik)
+    colormap(t(2),cpt.vik)
 
 end
 

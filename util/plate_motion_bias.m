@@ -1,4 +1,4 @@
-function [vel] = plate_motion_bias(par,x,y,vel,compE,compN,asc_frames_ind,desc_frames_ind)
+function [vel] = plate_motion_bias(par,cpt,x,y,vel,compE,compN,asc_frames_ind,desc_frames_ind)
 %=================================================================
 % function plate_motion_bias()
 %-----------------------------------------------------------------
@@ -14,6 +14,7 @@ function [vel] = plate_motion_bias(par,x,y,vel,compE,compN,asc_frames_ind,desc_f
 %                                                                  
 % INPUT:                                                           
 %   par: parameter structure from readparfile.
+%   cpt: structure containing colour palettes
 %   x, y: vectors of longitude and latitude
 %   vel: regridded velocities (3D array)
 %   compE, compN: regridded component vectors (3D arrays)
@@ -48,9 +49,6 @@ plate_vels_crop = plate_vels(in_poly,:);
 plate_E = griddata(plate_vels_crop(:,1),plate_vels_crop(:,2),plate_vels_crop(:,3),xx,yy);
 plate_N = griddata(plate_vels_crop(:,1),plate_vels_crop(:,2),plate_vels_crop(:,4),xx,yy);
 
-% for plotting
-if par.plt_plate_motion == 1; vel_orig = vel; load('plotting/cpt/vik.mat'); end
-
 %% loop through each velocity field
 
 for ii = 1:size(vel,3)
@@ -82,19 +80,19 @@ for ii = 1:size(vel,3)
         nexttile; hold on
         imagesc(x,y,vel_orig(:,:,ii),'AlphaData',~isnan(vel_orig(:,:,ii))); axis xy
         xlim(lonlim); ylim(latlim);
-        colorbar; colormap(vik); caxis(clim)
+        colorbar; colormap(cpt.vik); caxis(clim)
         title('Original InSAR vel')
 
         nexttile; hold on
         imagesc(x,y,plate_los,'AlphaData',~isnan(plate_los)); axis xy
         xlim(lonlim); ylim(latlim);
-        colorbar; colormap(vik); caxis(clim)
+        colorbar; colormap(cpt.vik); caxis(clim)
         title('Plate motion with shared ref')
 
         nexttile; hold on
         imagesc(x,y,vel(:,:,ii),'AlphaData',~isnan(vel(:,:,ii))); axis xy
         xlim(lonlim); ylim(latlim);
-        colorbar; colormap(vik); caxis(clim)
+        colorbar; colormap(cpt.vik); caxis(clim)
         title('InSAR - plate')
         
     end
@@ -112,7 +110,6 @@ if par.plt_plate_motion == 1
     lonlim = [min(x) max(x)];
     latlim = [min(y) max(y)];
     clim = [-10 10];
-    load('plotting/cpt/vik.mat')
     
     % reload borders for ease
     if par.plt_borders == 1
@@ -129,11 +126,11 @@ if par.plt_plate_motion == 1
     % plot ascending tracks
     t(1) = nexttile; hold on
     plt_data(x,y,vel(:,:,asc_frames_ind),lonlim,latlim,clim,'Ascending (mm/yr)',[],borders)
-    colormap(t(1),vik)
+    colormap(t(1),cpt.vik)
     
     % plot descending tracks
     t(2) = nexttile; hold on
     plt_data(x,y,vel(:,:,desc_frames_ind),lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
-    colormap(t(2),vik)
+    colormap(t(2),cpt.vik)
 
 end
