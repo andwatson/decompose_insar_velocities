@@ -112,13 +112,13 @@ if par.plt_input_vels == 1
     t(1) = nexttile; hold on
     plt_data(lon(asc_frames_ind),lat(asc_frames_ind),vel_tmp(asc_frames_ind),...
         lonlim,latlim,clim,'Ascending (mm/yr)',[],borders)
-    colormap(t(1),vik)
+    colormap(t(1),cpt.vik)
     
     % plot descending tracks
     t(2) = nexttile; hold on
     plt_data(lon(desc_frames_ind),lat(desc_frames_ind),vel_tmp(desc_frames_ind),...
         lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
-    colormap(t(2),vik)
+    colormap(t(2),cpt.vik)
     
     clear vel_tmp
     
@@ -224,13 +224,13 @@ if par.scale_vstd == 1
         t(1) = nexttile; hold on
         plt_data(lon(asc_frames_ind),lat(asc_frames_ind),vstd_tmp(asc_frames_ind),...
             lonlim,latlim,clim,'Ascending (mm/yr)',[],borders)
-        colormap(t(1),batlow)
+        colormap(t(1),cpt.batlow)
 
         % plot descending tracks
         t(2) = nexttile; hold on
         plt_data(lon(desc_frames_ind),lat(desc_frames_ind),vstd_tmp(desc_frames_ind),...
             lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
-        colormap(t(2),batlow)
+        colormap(t(2),cpt.batlow)
         
         clear vstd_tmp
         
@@ -416,7 +416,7 @@ end
 
 if par.plate_motion == 1
     disp('Applying plate motion correction')
-    [vel_regrid] = plate_motion_bias(par,x_regrid,y_regrid,vel_regrid,...
+    [vel_regrid] = plate_motion_bias(par,cpt,x_regrid,y_regrid,vel_regrid,...
         compE_regrid,compN_regrid,asc_frames_ind,desc_frames_ind);
 end
 
@@ -426,7 +426,7 @@ end
 
 if par.tie2gnss ~= 0
     disp('Referencing InSAR to interpolated GNSS velocities')
-    [vel_regrid] = ref_to_gnss(par,xx_regrid,yy_regrid,vel_regrid,...
+    [vel_regrid] = ref_to_gnss(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
         compE_regrid,compN_regrid,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind);    
 end
 

@@ -1,4 +1,4 @@
-function [vel] = ref_to_gnss(par,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind)
+function [vel] = ref_to_gnss(par,cpt,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind)
 %=================================================================
 % function ref_to_gnss()
 %-----------------------------------------------------------------
@@ -14,6 +14,7 @@ function [vel] = ref_to_gnss(par,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_
 %                                                                  
 % INPUT:                                                           
 %   par: parameter structure from readparfile.
+%   cpt: structure containing colour palettes
 %   x, y: vectors of longitude and latitude
 %   vel: regridded velocities (3D array)
 %   compE, compN, compU: regridded component vectors (3D arrays)
@@ -115,7 +116,6 @@ for ii = 1:nframes
     % for plotting
     if par.plt_ref_gnss_indv == 1
         vel_orig = vel(:,:,ii);
-        load('plotting/cpt/vik.mat')
     end
     
     % mask resid with vel (just for plotting)
@@ -143,19 +143,19 @@ for ii = 1:nframes
         nexttile; hold on
         imagesc(x,y,vel_orig,'AlphaData',~isnan(vel_orig)); axis xy
         xlim(lonlim); ylim(latlim);
-        colorbar; colormap(vik); caxis(clim)
+        colorbar; colormap(cpt.vik); caxis(clim)
         title('Original InSAR vel')
 
         nexttile; hold on
         imagesc(x,y,gnss_resid_plane(:,:,ii),'AlphaData',~isnan(gnss_resid_plane(:,:,ii))); axis xy
         xlim(lonlim); ylim(latlim);
-        colorbar; colormap(vik); caxis(clim)
+        colorbar; colormap(cpt.vik); caxis(clim)
         title('Referencing residual')
 
         nexttile; hold on
         imagesc(x,y,vel(:,:,ii),'AlphaData',~isnan(vel(:,:,ii))); axis xy
         xlim(lonlim); ylim(latlim);
-        colorbar; colormap(vik); caxis(clim)
+        colorbar; colormap(cpt.vik); caxis(clim)
         title('Referenced InSAR')
         
     end
@@ -170,7 +170,6 @@ if par.plt_ref_gnss_surfaces == 1
     lonlim = [min(x) max(x)];
     latlim = [min(y) max(y)];
     clim = [-10 10];
-    load('plotting/cpt/vik.mat')
 
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
@@ -180,12 +179,12 @@ if par.plt_ref_gnss_surfaces == 1
     % ascending tracks
     t(1) = nexttile; hold on
     plt_data(x,y,gnss_resid_plane(:,:,asc_frames_ind),lonlim,latlim,clim,'Ascending (mm/yr)',[],[])
-    colormap(t(1),vik)
+    colormap(t(1),cpt.vik)
 
     % descending tracks
     t(2) = nexttile; hold on
     plt_data(x,y,gnss_resid_plane(:,:,desc_frames_ind),lonlim,latlim,clim,'Descending (mm/yr)',[],[])
-    colormap(t(2),vik)
+    colormap(t(2),cpt.vik)
 end
     
 end
