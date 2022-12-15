@@ -222,9 +222,26 @@ end
 disp('Unifying grids')
 
 % limits and intervals for new grid
-x_regrid = min(cellfun(@min,lon)) : min(cellfun(@min,dx)) : max(cellfun(@max,lon));
-y_regrid = min(cellfun(@min,lat)) : min(cellfun(@min,dy)) : max(cellfun(@max,lat));
-dx = min(cellfun(@min,dx)); dy = min(cellfun(@min,dy));
+if par.auto_regrid == 1 % automate grid
+    x_regrid = min(cellfun(@min,lon)) : min(cellfun(@min,dx)) : max(cellfun(@max,lon));
+    y_regrid = min(cellfun(@min,lat)) : min(cellfun(@min,dy)) : max(cellfun(@max,lat));
+
+elseif par.auto_regrid == 0   
+    x_regrid = par.regrid_x;
+    y_regrid = par.regrid_y;
+    dx_regrid = x_regrid(2)-x_regrid(1); dy_regrid = y_regrid(2)-y_regrid(1);
+    
+    % check if requested grid spacing is near to input vels
+    dx_check = min(cellfun(@min,dx)); dy_check = min(cellfun(@min,dy));
+    if (abs(dx_check) - abs(dx_regrid)) > (dx_regrid*0.1) || ...
+            (abs(dy_check) - abs(dy_regrid)) > (dy_regrid*0.1)
+        warning('Resolution of input data is different from requested grid')
+        disp(['Smallest input spacing in x = ' num2str(dx_check) ...
+            ', requested spacing in x = ' num2str(dx_regrid)]);
+        disp(['Smallest input spacing in y = ' num2str(dy_check) ...
+            ', requested spacing in y = ' num2str(dy_regrid)]);
+    end    
+end
 
 % new grid to project data onto
 [xx_regrid,yy_regrid] = meshgrid(x_regrid,y_regrid); 
@@ -276,6 +293,27 @@ for ii = 1:nframes
         disp([num2str(round((ii./nframes)*100)) '% completed']);
     end
     
+end
+
+% crop regrid coords to area with valid pixels
+if par.auto_regrid == 0 && par.crop_post_regrid == 1
+    
+    % new inds
+    vel_crop = single(any(vel_regrid,3)); vel_crop(vel_crop==0) = nan;
+    [~,x_ind,y_ind,~,~] = crop_nans(vel_crop,x_regrid,y_regrid);
+    clear vel_crop
+    
+    % crop arrays
+    vel_regrid = vel_regrid(y_ind,x_ind,:);
+    vstd_regrid = vstd_regrid(y_ind,x_ind,:);
+    mask_regrid = mask_regrid(y_ind,x_ind,:);
+    compE_regrid = compE_regrid(y_ind,x_ind,:);
+    compN_regrid = compN_regrid(y_ind,x_ind,:);
+    compU_regrid = compU_regrid(y_ind,x_ind,:);
+    x_regrid = x_regrid(x_ind);
+    y_regrid = y_regrid(y_ind);
+    xx_regrid = xx_regrid(y_ind,x_ind);
+    yy_regrid = yy_regrid(y_ind,x_ind);
 end
 
 % resample gnss
@@ -558,7 +596,10 @@ if par.save_geotif == 1
     % write geotifs
     geotiffwrite([par.out_path par.out_prefix '_vU.geo.tif'],m_up,georef)
     geotiffwrite([par.out_path par.out_prefix '_vE.geo.tif'],m_east,georef)
-    geotiffwrite([par.out_path par.out_prefix '_vN.geo.tif'],m_north,georef)
+    
+    if exist('m_north','var')
+        geotiffwrite([par.out_path par.out_prefix '_vN.geo.tif'],m_north,georef)
+    end
     
 end
 

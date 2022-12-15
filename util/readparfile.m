@@ -50,6 +50,22 @@ par.out_prefix = getparval(cfgcell,'out_prefix',[]);
 
 %% processing toggles
 
+% regridding coordinates
+par.auto_regrid = getparval(cfgcell,'auto_regrid',1);
+if par.auto_regrid == 0
+    par.crop_post_regrid = getparval(cfgcell,'crop_post_regrid',0);
+    
+    regrid_xmin = getparval(cfgcell,'regrid_xmin',[]);
+    regrid_xmax = getparval(cfgcell,'regrid_xmax',[]);
+    regrid_dx = getparval(cfgcell,'regrid_dx',[]);
+    regrid_ymin = getparval(cfgcell,'regrid_ymin',[]);
+    regrid_ymax = getparval(cfgcell,'regrid_ymax',[]);
+    regrid_dy = getparval(cfgcell,'regrid_dy',[]);
+    
+    par.regrid_x = regrid_xmin:regrid_dx:regrid_xmax;
+    par.regrid_y = regrid_ymin:regrid_dy:regrid_ymax;
+end
+
 % scale input velocity uncertainties
 par.scale_vstd = getparval(cfgcell,'scale_vstd',0);
 par.scale_vstd_model = getparval(cfgcell,'scale_vstd_model','sph');
