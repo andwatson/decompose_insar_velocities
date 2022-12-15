@@ -61,7 +61,7 @@ for ii = 1:nframes
     gnss_resid = vel_tmp - gnss_los;
     
     % method switch
-    switch par.tie2gnss
+    switch par.ref_type
         case 1 % polynomial surface
             
             % remove nans

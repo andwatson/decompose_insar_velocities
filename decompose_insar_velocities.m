@@ -279,7 +279,7 @@ for ii = 1:nframes
 end
 
 % resample gnss
-if par.ref2gnss == 2
+if isfield(gnss,'x')
     [xx_gnss,yy_gnss] = meshgrid(gnss.x,gnss.y);
     gnss_E = interp2(xx_gnss,yy_gnss,gnss.E,xx_regrid,yy_regrid);
     gnss_N = interp2(xx_gnss,yy_gnss,gnss.N,xx_regrid,yy_regrid);
@@ -405,12 +405,12 @@ end
 
 if par.ref2gnss == 1
     disp('Referencing InSAR to GNSS station velocities')
-    [vel_regrid] = ref_to_gnss_stations(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
+    vel_regrid = ref_to_gnss_stations(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
         compE_regrid,compN_regrid,gnss,asc_frames_ind,desc_frames_ind);   
     
 elseif par.ref2gnss == 2
     disp('Referencing InSAR to interpolated GNSS velocities')
-    [vel_regrid] = ref_to_gnss_fields(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
+    vel_regrid = ref_to_gnss_fields(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
         compE_regrid,compN_regrid,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind);
     
 end
@@ -528,6 +528,8 @@ if par.plt_threshold_masks == 1
     
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
+    
+    
     t = tiledlayout(1,2,'TileSpacing','compact');
     title(t,'Threshold masks')
     

@@ -78,40 +78,60 @@ desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
 
 %% load gnss
 
-% load gnss vels and check if uncertainties are present (if requested)
-
-switch par.ref2gnss
-    case 0
-        disp('Not loading GNSS vels - this may break other functions')
-        
-    case 1
-        % GNSS file should be a (at least) six column text file of:
-        % lon lat vE vN sE sN (cor)
-        
-        % check extension
-        [~,~,ext] = fileparts(par.gnss_file);
-        if strcmp(ext,'.mat')
-            error('GNSS stations requested, gnss_file should not end .mat')
-        end
-        
-        gnss = readmatrix(par.gnss_file);
-        
-    case 2
-        
-        % check extension
-        [~,~,ext] = fileparts(par.gnss_file);
-        if ~strcmp(ext,'.mat')
-            error('GNSS fields requested, gnss_file should end .mat')
-        end
-        
-        % GNSS file is interpolated velocities in a .mat
-        gnss = importdata(par.gnss_file);
-
-        % check for uncertainties
-        if par.gnss_uncer == 1 && (~isfield(gnss_field,'sE') || ~isfield(gnss_field,'sN'))
-            error('Propagation of GNSS uncertainties requested, but GNSS mat file does not contain sE and sN')
-        end
+% select which to load.
+% we only need the stations vels if they're used for referencing.
+% we need the field velocities if they are used for referencing or in the
+% decomp.
+if par.ref2gnss == 0 && par.decomp_method == 3
+    load_stations = 0; load_fields = 0;
+elseif par.ref2gnss == 1 && par.decomp_method == 3
+    load_stations = 1; load_fields = 0;
+elseif par.ref2gnss == 1 || ismember(par.decomp_method,0:2)
+    load_stations = 1; load_fields = 1;
 end
+
+% load neither
+if load_stations == 0 && load_fields == 0
+    disp('Loading neither GNSS stations or GNSS fields.')
+end
+
+% load fields
+if load_fields == 1
+    
+    disp('Loading interpolated GNSS fields')
+    
+    % check extension
+    [~,~,ext] = fileparts(par.gnss_fields_file);
+    if ~strcmp(ext,'.mat')
+        error('GNSS fields requested, gnss_file should end .mat')
+    end
+
+    % GNSS file is interpolated velocities in a .mat
+    gnss = importdata(par.gnss_fields_file);
+
+    % check for uncertainties
+    if par.gnss_uncer == 1 && (~isfield(gnss_field,'sE') || ~isfield(gnss_field,'sN'))
+        error('Propagation of GNSS uncertainties requested, but GNSS mat file does not contain sE and sN')
+    end
+end
+
+% load stations
+if load_stations == 1
+    % GNSS file should be a (at least) six column text file of:
+    % lon lat vE vN sE sN (cor)
+    
+    disp('Loading GNSS station velocities')
+
+    % check extension
+    [~,~,ext] = fileparts(par.gnss_stations_file);
+    if strcmp(ext,'.mat')
+        error('GNSS stations requested, gnss_file should not end .mat')
+    end
+
+    gnss.stations = readmatrix(par.gnss_stations_file);
+end
+
+% have to load fields first so that the structures combine easily.
 
 %% load plotting files
 

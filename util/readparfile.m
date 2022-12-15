@@ -30,8 +30,11 @@ cfgcell = readcell(cfgfile,'FileType','text','CommentStyle','%','Delimiter',':')
 
 %% paths
 
-% gnss path
-par.gnss_file = getparval(cfgcell,'gnss_file',[]);
+% gnss fields path
+par.gnss_fields_file = getparval(cfgcell,'gnss_fields_file',[]);
+
+% gnss stations path
+par.gnss_stations_file = getparval(cfgcell,'gnss_stations_file',[]);
 
 % fault path
 par.faults_file = getparval(cfgcell,'faults_file',[]);
