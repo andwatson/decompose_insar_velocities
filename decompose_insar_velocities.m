@@ -457,7 +457,11 @@ end
 
 if par.frame_overlaps == 1
     disp('Calculating frame overlap statistics')
-    frame_overlap_stats(vel_regrid,frames,compU_regrid);
+    if par.merge_tracks_along == 2
+        frame_overlap_stats(vel_regrid,tracks,compU_regrid);
+    else
+        frame_overlap_stats(vel_regrid,frames,compU_regrid);
+    end
 end
 
 %% identify pixels without both asc and desc coverage

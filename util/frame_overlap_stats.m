@@ -44,6 +44,7 @@ disp('Calculating along-track overlaps')
 % pre-allocate
 along_track_asc = nan(size(vel(:,:,1)));
 along_track_desc = nan(size(vel(:,:,1)));
+track_diffs = cell(1,length(unique_tracks));
 
 % loop through each track
 for ii = 1:length(unique_tracks)
@@ -53,7 +54,7 @@ for ii = 1:length(unique_tracks)
     track_indn = find(track_ind);
     
     % find the overlaps
-    overlaps = sum(vel(:,:,track_ind)~=0,3);
+    overlaps = sum( (vel(:,:,track_ind)~=0 & ~isnan(vel(:,:,track_ind)) ),3);
     
     % subtract each frame
     frame_sub = vel(:,:,track_indn(1));
@@ -67,6 +68,10 @@ for ii = 1:length(unique_tracks)
     elseif unique_tracks{ii}(4) == 'D'
         along_track_desc(overlaps==2) = frame_sub(overlaps==2);
     end
+    
+    % store just diffs for each track
+    track_diffs{ii} = frame_sub(overlaps==2);
+    
 end
 
 %% prep across-track overlaps

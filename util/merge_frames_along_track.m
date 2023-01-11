@@ -219,7 +219,7 @@ for ii = 1:length(unique_tracks)
     end
     
     % plot original velocities and merged result
-    if par.plt_merge_along_corr == 2
+    if par.plt_merge_along_corr == 1
         
         % plot original frames
         f1 = figure();
