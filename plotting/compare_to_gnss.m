@@ -15,7 +15,7 @@ addpath ../util/
 vel_direction = 'north';
 
 % distance threhold, in same coords as velocities (likely degrees)
-dist_or_nearest = 1; %0=dist, 1=nearest
+dist_or_nearest = 0; %0=dist, 1=nearest
 dist_threshold = 0.10;
 
 % fit some function to the gnss residuals
@@ -24,18 +24,19 @@ remove_offset = 0;
 
 %% load
 
-track = '006D';
-in_dir = '/scratch/eearw/iran_frame_vels/long_track_comparisons/plate_corrd_2km/';
+% track = '006D';
+% in_dir = '/scratch/eearw/iran_frame_vels/long_track_comparisons/plate_corrd_2km/';
 
 % component files (required for los)
-compE_file = [in_dir track '_compE.geo.tif'];
-compN_file = [in_dir track '_compN.geo.tif'];
+% compE_file = [in_dir track '_compE.geo.tif'];
+% compN_file = [in_dir track '_compN.geo.tif'];
 
 % vels
 % vel_file = [in_dir track '_vel.geo.tif'];
 % vel_file = '/scratch/eearw/decomp_frame_vels/out/2km_for_plotting/iran_gacos_ml2_vE.geo.tif';
 % vel_file = '/scratch/eearw/decomp_frame_vels/out/interp_test/iran_gacos_2km_vE.geo.tif';
-vel_file = '/scratch/eearw/kriging/out/khor_cleaned_extended/testing/vn_interpolated_synth2.mat';
+% vel_file = '/scratch/eearw/kriging/out/khor_cleaned_extended/testing/vn_interpolated_synth2.mat';
+vel_file = '/nfs/a285/homes/eearw/gmt/thesis/chp4/gnss_kriging/data/mkdf_pinning/vn_interpolated_mkdf1.mat';
 
 % change load method for tif and mat files
 [~,~,ext] = fileparts(vel_file);
@@ -47,7 +48,7 @@ end
 
 % gnss
 % gnss_file = '/scratch/eearw/decomp_frame_vels/gnss/khor/cleaned_stations/khor_vert_10mm_gf7_buff01.csv';
-gnss_file = '/scratch/eearw/decomp_frame_vels/gnss/khor/cleaned_stations/khor_vert_10mm_gf7_buff01_withSynth1.csv';
+gnss_file = '/scratch/eearw/decomp_frame_vels/gnss/khor/cleaned_stations/khor_vert_10mm_gf7_buff01_withMkdf1.csv';
 gnss = readmatrix(gnss_file);
 
 % borders for plotting
@@ -231,7 +232,7 @@ scatter(resid(:,1),resid(:,2),70,resid(:,3),'Filled','MarkerEdgeColor','k')
 for ii = 1:length(borders.places); plot(borders.lon{ii},borders.lat{ii},'k'); end
 colorbar; colormap(vik); caxis([-5 5])
 xlim(lonlim); ylim(latlim)
-title(track)
+% title(track)
 
 f = figure();
 % f.Position = [50 100 600 500];

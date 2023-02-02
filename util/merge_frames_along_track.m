@@ -90,6 +90,9 @@ for ii = 1:length(unique_tracks)
                     n_ov = n_ov + 1;
                 end
                 
+                overlap = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
+                writematrix(overlap(:),['/nfs/a285/homes/eearw/gmt/thesis/chp4/along_track_overlaps_all/data/merge_test/' unique_tracks{ii} '_' num2str(jj) '_along.txt']);
+            
             end
             
             
@@ -159,8 +162,10 @@ for ii = 1:length(unique_tracks)
     if par.merge_tracks_along == 2
         
         if isempty(multi_segment)
-            % take mean of overlap and store new vel
-            track_vel(:,:,ind_count) = mean(vel(:,:,track_ind),3,'omitnan');
+            % take the weighted mean of overlap and store new vel
+            track_weights = 1 ./ vstd(:,:,track_ind);            
+            track_vel(:,:,ind_count) = sum(vel(:,:,track_ind).*track_weights,3,'omitnan') ...
+                ./ sum(track_weights,3,'omitnan');
 
             % merge component vectors
             track_compE(:,:,ind_count) = mean(compE(:,:,track_ind),3,'omitnan');
@@ -168,7 +173,7 @@ for ii = 1:length(unique_tracks)
             track_compU(:,:,ind_count) = mean(compU(:,:,track_ind),3,'omitnan');
 
             % merge pixel uncertainties
-            track_vstd(:,:,ind_count) = mean(vstd(:,:,track_ind),3,'omitnan');
+            track_vstd(:,:,ind_count) = 1 ./ sqrt( sum(track_weights,3,'omitnan') );
             
         else
             % number of segments
@@ -193,19 +198,24 @@ for ii = 1:length(unique_tracks)
             ind_count_inc = 0;
             for kk = 1:2:length(multi_segment)
                 
-                % take mean of subset of frames on track
+                % indices for this segment
+                track_ind_seg = track_ind(multi_segment(kk):multi_segment(kk+1));
+                
+                % take weighted mean of subset of frames on track             
+                track_weights = 1 ./ vstd(:,:,track_ind_seg);            
                 track_vel(:,:,ind_count+ind_count_inc) ...
-                    = mean(vel(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                    = sum(vel(:,:,track_ind_seg).*track_weights,3,'omitnan') ...
+                    ./ sum(track_weights,3,'omitnan');
                 
                 track_compE(:,:,ind_count+ind_count_inc) ...
-                    = mean(compE(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                    = mean(compE(:,:,track_ind_seg),3,'omitnan');
                 track_compN(:,:,ind_count+ind_count_inc) ...
-                    = mean(compN(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                    = mean(compN(:,:,track_ind_seg),3,'omitnan');
                 track_compU(:,:,ind_count+ind_count_inc) ...
-                    = mean(compU(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                    = mean(compU(:,:,track_ind_seg),3,'omitnan');
                 
-                track_vstd(:,:,ind_count+ind_count_inc) ...
-                    = mean(vstd(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                % weighted uncertainties
+                track_vstd(:,:,ind_count+ind_count_inc) = 1 ./ sqrt( sum(track_weights,3,'omitnan') );
                 
                 % increment counter
                 ind_count_inc = ind_count_inc + 1;
@@ -219,7 +229,7 @@ for ii = 1:length(unique_tracks)
     end
     
     % plot original velocities and merged result
-    if par.plt_merge_along_corr == 1
+    if par.plt_merge_along_corr == 1 || par.plt_merge_along_corr == 2
         
         % plot original frames
         f1 = figure();
@@ -246,8 +256,12 @@ for ii = 1:length(unique_tracks)
         caxis([-10 10])
         colorbar
         axis xy
-
-        waitfor(f1); waitfor(f2)
+        
+        % weight for the figures to be closed to avoid bombarding the user
+        % when using a large number of frames
+        if par.plt_merge_along_corr == 2
+            waitfor(f1); waitfor(f2)
+        end
         
     end
     
