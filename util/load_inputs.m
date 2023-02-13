@@ -88,11 +88,14 @@ elseif par.ref2gnss == 1 && par.decomp_method == 3
     load_stations = 1; load_fields = 0;
 elseif par.ref2gnss == 1 || ismember(par.decomp_method,0:2)
     load_stations = 1; load_fields = 1;
+else
+    load_stations = 0; load_fields = 0;
 end
 
 % load neither
 if load_stations == 0 && load_fields == 0
     disp('Loading neither GNSS stations or GNSS fields.')
+    gnss = [];
 end
 
 % load fields
@@ -110,7 +113,7 @@ if load_fields == 1
     gnss = importdata(par.gnss_fields_file);
 
     % check for uncertainties
-    if par.gnss_uncer == 1 && (~isfield(gnss_field,'sE') || ~isfield(gnss_field,'sN'))
+    if par.gnss_uncer == 1 && (~isfield(gnss,'sE') || ~isfield(gnss,'sN'))
         error('Propagation of GNSS uncertainties requested, but GNSS mat file does not contain sE and sN')
     end
 end

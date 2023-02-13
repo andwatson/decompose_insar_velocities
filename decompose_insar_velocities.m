@@ -541,7 +541,7 @@ if par.plt_decomp_uncer == 1
 
     lonlim = [min(x_regrid) max(x_regrid)];
     latlim = [min(y_regrid) max(y_regrid)];
-    clim = [0 4];
+    clim = [0 2];
 
     f = figure();
     f.Position([1 3 4]) = [600 2000 800];

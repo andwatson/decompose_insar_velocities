@@ -46,7 +46,7 @@ condG_threshold_mask = zeros(rowcol);
 % calculate UN component vector, first by calculating the incidence angle
 % and heading. Incidence angle is measured from the vertical, and azimuth
 % is measured negatively counterclockwise from north. This is to match the
-% definitions in Qi's work.
+% definitions in Qi Ou's work.
 inc = 90 - asind(compU);
 az = acosd(compE./sind(inc))-180;
 compUN = sqrt(1 - sind(inc).^2 .* cosd(az).^2);
