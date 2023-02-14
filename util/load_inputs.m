@@ -1,4 +1,4 @@
-function [lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,frames,...
+function [lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,poly_mask,frames,...
     asc_frames_ind,desc_frames_ind,fault_trace,gnss,borders] = load_inputs(par,insarpar)
 %=================================================================
 % function [] = load_inputs()
@@ -64,10 +64,17 @@ for ii = 1:nframes
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_u '*']);
     [~,~,compU{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name],'single');
     
-    % load mask
-    if par.usemask == 1
+    % load mask tifs for each vel
+    if par.use_mask == 1 || par.use_mask == 3          
         namestruct = dir([insarpar.dir{ii} '*' insarpar.id_mask '*']);
-        [~,~,mask{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name],'single');
+        [~,~,mask{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name],'single');        
+    end
+    
+    % load shapefile mask
+    if par.use_mask == 2 || par.use_mask == 3        
+        poly_mask = shaperead(par.poly_mask_file);
+    else
+        poly_mask = [];      
     end
     
 end
@@ -136,7 +143,7 @@ end
 
 % have to load fields first so that the structures combine easily.
 
-%% load plotting files
+%% load misc
 
 % fault traces
 if par.plt_faults == 1

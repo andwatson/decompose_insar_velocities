@@ -42,6 +42,9 @@ par.faults_file = getparval(cfgcell,'faults_file',[]);
 % borders path
 par.borders_file = getparval(cfgcell,'borders_file',[]);
 
+% external shapefile mask
+par.poly_mask_file = getparval(cfgcell,'poly_mask_file',[]);
+
 % output path
 par.out_path = getparval(cfgcell,'out_path',[]);
 
@@ -78,7 +81,7 @@ par.ref_filter_window_size = getparval(cfgcell,'ref_filter_window_size',[]);
 par.ref_station_radius = getparval(cfgcell,'ref_station_radius',0);
 
 % use mask
-par.usemask = getparval(cfgcell,'usemask',0);
+par.use_mask = getparval(cfgcell,'use_mask',0);
 
 % downsampling
 par.ds_factor = getparval(cfgcell,'ds_factor',0);
@@ -114,6 +117,9 @@ par.frame_overlaps = getparval(cfgcell,'frame_overlaps',0);
 
 % save geotiffs
 par.save_geotif = getparval(cfgcell,'save_geotif',0);
+
+% save grd files
+par.save_grd = getparval(cfgcell,'save_grd',0);
 
 % plot faults
 par.plt_faults = getparval(cfgcell,'plt_faults',0);

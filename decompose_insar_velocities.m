@@ -75,7 +75,7 @@ if length(unique(insarpar.dir)) ~= nframes
 end
 
 % load main inputs
-[lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,frames,...
+[lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,poly_mask,frames,...
     asc_frames_ind,desc_frames_ind,fault_trace,gnss,borders] = load_inputs(par,insarpar);
 
 % colour palettes  (https://www.fabiocrameri.ch/colourmaps/)
@@ -270,7 +270,7 @@ for ii = 1:nframes
         = interp2(xx,yy,vstd{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
         yy_regrid(yind_min:yind_max,xind_min:xind_max));
     
-    if par.usemask == 1
+    if par.use_mask == 1 || par.use_mask == 3
         mask_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
             = interp2(xx,yy,mask{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
             yy_regrid(yind_min:yind_max,xind_min:xind_max));
@@ -345,9 +345,10 @@ disp('Grid unification complete')
 
 %% apply mask
 
-if par.usemask == 1
+% tif masks
+if par.use_mask == 1 || par.use_mask == 3
     
-    disp('Applying mask')
+    disp('Applying tifs masks')
     
     % account for previous downsampling
     mask_regrid(isnan(mask_regrid)) = 0;
@@ -357,6 +358,33 @@ if par.usemask == 1
     
     % convert to logical
     mask_regrid = logical(mask_regrid);
+
+end
+
+% poly mask
+if par.use_mask == 2 || par.use_mask == 3
+    
+    disp('Applying poly mask')
+    
+    % for each polygon
+    for ii = 1:length(poly_mask)
+        
+        % check if within polygon
+        [in_poly,~] = inpolygon(xx_regrid(:),yy_regrid(:),poly_mask(ii).X,poly_mask(ii).Y);
+        
+        % reshape to 3D array
+        in_poly = reshape(in_poly,size(xx_regrid));
+        in_poly = repmat(in_poly,1,1,nframes);
+        
+        vel_regrid(in_poly) = nan;
+        vstd_regrid(in_poly) = nan;
+        
+        % report progress
+        if (mod(ii,round(length(poly_mask)./10))) == 0
+            disp([num2str(round((ii./length(poly_mask))*100)) '% completed']);
+        end
+        
+    end
 
 end
 
@@ -585,6 +613,7 @@ end
 
 %% save outputs
 
+% save geotiffs
 if par.save_geotif == 1
     
     disp('Saving the following outputs:')
@@ -604,6 +633,24 @@ if par.save_geotif == 1
     if exist('m_north','var')
         geotiffwrite([par.out_path par.out_prefix '_vN.geo.tif'],m_north,georef)
     end
+    
+end
+
+% save grd files
+if par.save_grd == 1
+    
+    disp('Saving the following outputs:')
+    disp([par.out_path par.out_prefix '_vU.grd'])
+    disp([par.out_path par.out_prefix '_vE.grd'])
+    disp([par.out_path par.out_prefix '_vN.grd'])
+    
+    % write grd files
+    grdwrite2(x_regrid,y_regrid,m_up,[par.out_path par.out_prefix '_vU.grd']);
+    grdwrite2(x_regrid,y_regrid,m_east,[par.out_path par.out_prefix '_vE.grd']);
+    
+    if exist('m_north','var')
+        grdwrite2(x_regrid,y_regrid,m_north,[par.out_path par.out_prefix '_vN.grd']);
+    end    
     
 end
 
