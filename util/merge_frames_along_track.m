@@ -101,8 +101,12 @@ for ii = 1:length(unique_tracks)
                     - median(overlap_resid(:),'omitnan');
                 
             case 3 % modal difference
+%                 bins = -20.05:0.1:20.05;                                
+%                 vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) ...
+%                     - bins(mode(discretize(overlap_resid,bins)));
+
                 vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) ...
-                    - mode(round(overlap_resid(:),3));
+                    - mode(round(overlap_resid,1),'omitnan');
                 
         end
                

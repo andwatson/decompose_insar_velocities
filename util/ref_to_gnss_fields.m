@@ -106,7 +106,8 @@ for ii = 1:nframes
             gnss_resid_filtered = ndnanfilter(gnss_resid,'rectwin',windsize);
             
             % reapply nans
-            gnss_resid_filtered(isnan(gnss_resid)) = nan;
+%             gnss_resid_filtered(isnan(gnss_resid)) = nan;
+            gnss_resid_filtered(isnan(vel(:,:,ii))) = nan;
             
             % store
             gnss_resid_plane(:,:,ii) = gnss_resid_filtered;

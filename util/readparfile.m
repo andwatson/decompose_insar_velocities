@@ -121,6 +121,9 @@ par.save_geotif = getparval(cfgcell,'save_geotif',0);
 % save grd files
 par.save_grd = getparval(cfgcell,'save_grd',0);
 
+% save frames or tracks
+par.save_frames = getparval(cfgcell,'save_frames',0);
+
 % plot faults
 par.plt_faults = getparval(cfgcell,'plt_faults',0);
 

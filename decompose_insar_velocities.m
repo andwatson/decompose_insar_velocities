@@ -169,8 +169,14 @@ if par.scale_vstd == 1
     
     for ii = 1:nframes
         
+        % temp apply mask if request
+        vstd_temp = vstd{ii};
+        if par.use_mask == 1
+            vstd_temp(mask{ii}==0) = NaN;
+        end            
+        
         % apply scaling
-        [vstd{ii},scale_vstd_misfit(ii)] = scale_vstd(par,lon{ii},lat{ii},vstd{ii});
+        [vstd{ii},scale_vstd_misfit(ii)] = scale_vstd(par,lon{ii},lat{ii},vstd_temp,frames{ii});
         
         % report progress
         if (mod(ii,round(nframes./10))) == 0
@@ -629,6 +635,8 @@ if par.save_geotif == 1
     % write geotifs
     geotiffwrite([par.out_path par.out_prefix '_vU.geo.tif'],m_up,georef)
     geotiffwrite([par.out_path par.out_prefix '_vE.geo.tif'],m_east,georef)
+    geotiffwrite([par.out_path par.out_prefix '_sU.geo.tif'],var_up,georef)
+    geotiffwrite([par.out_path par.out_prefix '_sE.geo.tif'],var_east,georef)
     
     if exist('m_north','var')
         geotiffwrite([par.out_path par.out_prefix '_vN.geo.tif'],m_north,georef)
@@ -647,10 +655,58 @@ if par.save_grd == 1
     % write grd files
     grdwrite2(x_regrid,y_regrid,m_up,[par.out_path par.out_prefix '_vU.grd']);
     grdwrite2(x_regrid,y_regrid,m_east,[par.out_path par.out_prefix '_vE.grd']);
+    grdwrite2(x_regrid,y_regrid,var_up,[par.out_path par.out_prefix '_sU.grd']);
+    grdwrite2(x_regrid,y_regrid,var_east,[par.out_path par.out_prefix '_sE.grd']);
     
     if exist('m_north','var')
         grdwrite2(x_regrid,y_regrid,m_north,[par.out_path par.out_prefix '_vN.grd']);
     end    
+    
+end
+
+% save frames / tracks
+if par.save_frames == 1
+    
+    % toggle between tracks and frames depending on if the merge has
+    % happened
+    if par.merge_tracks_along == 2
+        outdirs = tracks;
+        
+%         % identify repeated tracks and append a number
+%         [~,~,rep_ind] = unique(outdirs);
+%         for ii = 1:length(tracks)
+%             track_ind = strcmp(tracks,tracks{ii});
+    
+        % THIS NEEDS FINISHING - ERROR WHEN TRACKS GET SPLIT.
+            
+    else
+        outdirs = frames;
+    end
+    
+    % loop through frames / tracks
+    for ii = 1:nframes
+        
+        % create frame directory
+        mkdir([par.out_path outdirs{ii}])
+
+        % crop to minimise file size
+        [~,x_ind,y_ind,x_crop,y_crop] = crop_nans(vel_regrid(:,:,ii),x_regrid,y_regrid);
+        
+        % create georeference
+        georef = georefpostings([min(y_crop) max(y_crop)],...
+            [min(x_crop) max(x_crop)],size(vel_regrid(y_ind,x_ind,:)),'ColumnsStartFrom','south',...
+            'RowsStartFrom','west');    
+        
+        % write outputs
+        geotiffwrite(fullfile(par.out_path,outdirs{ii},'vel.geo.tif'),vel_regrid(y_ind,x_ind,ii),georef)
+        geotiffwrite(fullfile(par.out_path,outdirs{ii},'vstd.geo.tif'),vstd_regrid(y_ind,x_ind,ii),georef)
+        geotiffwrite(fullfile(par.out_path,outdirs{ii},'E.geo.tif'),compE_regrid(y_ind,x_ind,ii),georef)
+        geotiffwrite(fullfile(par.out_path,outdirs{ii},'N.geo.tif'),compN_regrid(y_ind,x_ind,ii),georef)
+        geotiffwrite(fullfile(par.out_path,outdirs{ii},'U.geo.tif'),compU_regrid(y_ind,x_ind,ii),georef)       
+        
+        disp([outdirs{ii} ' saved.'])
+        
+    end
     
 end
 

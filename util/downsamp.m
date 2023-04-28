@@ -20,12 +20,12 @@ for ii = 1:nframes
         = downsample_array(vel{ii},par.ds_factor,par.ds_factor,par.ds_method,lon{ii},lat{ii});        
     [vstd{ii},~,~] = downsample_array(vstd{ii},par.ds_factor,par.ds_factor,par.ds_method);
 
-    [compE{ii},lon_comp{ii},lat_comp{ii}] ...
-        = downsample_array(compE{ii},par.ds_factor,par.ds_factor,par.ds_method,lon_comp{ii},lat_comp{ii});
+    [compE{ii},lon{ii},lat{ii}] ...
+        = downsample_array(compE{ii},par.ds_factor,par.ds_factor,par.ds_method,lon{ii},lat{ii});
     [compN{ii},~,~] = downsample_array(compN{ii},par.ds_factor,par.ds_factor,par.ds_method);
     [compU{ii},~,~] = downsample_array(compU{ii},par.ds_factor,par.ds_factor,par.ds_method);
 
-    if par.usemask == 1
+    if par.use_mask == 1
         [mask{ii},~,~] ...
             =  downsample_array(mask{ii},par.ds_factor,par.ds_factor,par.ds_method);
     end
