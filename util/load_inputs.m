@@ -8,8 +8,28 @@ function [lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,poly_m
 %                                                                  
 % INPUT:                                                           
 %   par:  structure containing general parameters
+%   insarpar: structure containing insar-specific parameters
 % OUTPUT:                                                          
-%   
+%   lon,lat: cell arrays containing coordinate vectors for each frame
+%   dx,dy: cell arrays containing input grid spacing for each frame
+%   lon_comp,lat_comp: cell arrays containing coordinate vectors for the
+%                       look vector component maps for each frame (issue 
+%                       with an older version of lics where the vectors
+%                       were on the wrong grid, may not be obsolete)
+%   vel: cell array containing the 2D velocity arrays for each frame
+%   vstd: cell array containing the 2D uncertainty arrays for each frame
+%   compE,compN,compU: cell arrays containing the 2D look vector component
+%                       arrays for each frame
+%   mask: cell array containing the 2D mask arrays for each frame
+%   poly_mask: structure array containing the polygons from the poly_mask
+%               shape file
+%   frames: cell array of frame name strings
+%   asc_frames_ind,desc_frames_ind: indices for the ascending and
+%                                    descending frames
+%   fault_trace: nx2 coordinate array defining fault traces for plotting
+%   gnss: structure that optionally combines both the interpolated GNSS
+%           fields and the GNSS stations
+%   borders: structure containing polygons defining country borders
 %
 % Andrew Watson     24-11-2022
 %                                                                  
@@ -89,12 +109,24 @@ desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
 % we only need the stations vels if they're used for referencing.
 % we need the field velocities if they are used for referencing or in the
 % decomp.
+
+% no referencing, and assuming N is zero
 if par.ref2gnss == 0 && par.decomp_method == 3
     load_stations = 0; load_fields = 0;
+    
+% ref to stations, assume N is zero
 elseif par.ref2gnss == 1 && par.decomp_method == 3
     load_stations = 1; load_fields = 0;
-elseif par.ref2gnss == 1 || ismember(par.decomp_method,0:2)
+    
+% ref to stations, any other decomp method
+elseif par.ref2gnss == 1 && ismember(par.decomp_method,0:2)
     load_stations = 1; load_fields = 1;
+    
+% ref to fields, any decomp
+elseif par.ref2gnss == 2
+    load_stations = 0; load_fields = 1;
+    
+% anything else
 else
     load_stations = 0; load_fields = 0;
 end

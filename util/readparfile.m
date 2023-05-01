@@ -8,7 +8,10 @@ function [par,insarpar] = readparfile(cfgfile)
 % INPUT:                                                           
 %   cfgfile: path to parameter text file (e.g. velmap.conf)
 % OUTPUT:                                                          
-%   par:  structure containing general parameters
+%   par:  structure containing general parameters (paths, processing
+%           toggles, plotting and output toggles)
+%   insarpar: structure containing InSAR specific options (extensions,
+%               number of frames, directories)
 %   
 % Adapted from the velmap function of the same name.
 %
