@@ -127,6 +127,9 @@ par.save_grd = getparval(cfgcell,'save_grd',0);
 % save frames or tracks
 par.save_frames = getparval(cfgcell,'save_frames',0);
 
+% save overlaps as text files for plotting histograms
+par.save_overlaps = getparval(cfgcell,'save_overlaps',0);
+
 % plot faults
 par.plt_faults = getparval(cfgcell,'plt_faults',0);
 

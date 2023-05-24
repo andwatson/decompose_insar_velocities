@@ -24,6 +24,14 @@ function [track_vel,track_compE,track_compN,track_compU,track_vstd,unique_tracks
 %                                                                  
 %=================================================================
 
+%% make output directory if saving overlaps is requested
+
+if par.save_overlaps == 1
+    if ~exist([par.out_path par.out_prefix '_overlaps'],'dir')
+        mkdir([par.out_path par.out_prefix '_overlaps'])
+    end
+end
+
 %% get unique tracks
 
 % get tracks from frame ids, removing duplicates
@@ -106,12 +114,21 @@ for ii = 1:length(unique_tracks)
                 
         end
                
-        % save overlap for plotting
-        if par.plt_merge_along_resid == 1
+        % save overlap for plotting and/or saving
+        if par.plt_merge_along_resid == 1 || par.save_overlaps == 1
             overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
             n_ov = n_ov + 1;
         end
         
+    end
+
+    % save overlaps for histograms
+    if par.save_overlaps == 1
+        overlaps = overlaps(~cellfun('isempty',overlaps));
+        for kk = 1:length(overlaps)
+            writematrix(overlaps{kk}(~isnan(overlaps{kk})),...
+                [par.out_path par.out_prefix '_overlaps/' unique_tracks{ind_count} '_' num2str(kk) '_along.txt'])
+        end
     end
     
     % remove unused rows
