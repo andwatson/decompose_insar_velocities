@@ -90,7 +90,8 @@ if par.plt_input_vels == 1
     
     disp('Plotting preview of input velocities')
     
-    plt_asc_desc_cells(par,lon,lat,vel,mask,asc_frames_ind,desc_frames_ind,cpt.vik,[-10 10],borders)
+    plt_asc_desc_cells(par,lon,lat,vel,mask,asc_frames_ind,...
+        desc_frames_ind,cpt.vik,[-10 10],borders,'Input velocities')
     
 end
 
@@ -142,13 +143,13 @@ if par.scale_vstd == 1
     for ii = 1:nframes
         
         % temp apply mask if request
-        vstd_temp = vstd{ii};
-        if par.use_mask == 1
-            vstd_temp(mask{ii}==0) = NaN;
-        end            
+%         vstd_temp = vstd{ii};
+%         if par.use_mask == 1
+%             vstd_temp(mask{ii}==0) = NaN;
+%         end            
         
         % apply scaling
-        [vstd{ii},scale_vstd_misfit(ii)] = scale_vstd(par,lon{ii},lat{ii},vstd_temp,frames{ii});
+        [vstd{ii},scale_vstd_misfit(ii)] = scale_vstd(par,lon{ii},lat{ii},vstd{ii},frames{ii});
         
         % report progress
         if (mod(ii,round(nframes./10))) == 0
@@ -159,7 +160,8 @@ if par.scale_vstd == 1
     % plot all if requested
     if par.plt_scale_vstd_all == 1       
         disp('Plotting scaled uncertainties')        
-        plt_asc_desc_cells(par,lon,lat,vstd,mask,asc_frames_ind,desc_frames_ind,cpt.batlow,[0 3],borders)      
+        plt_asc_desc_cells(par,lon,lat,vstd,mask,asc_frames_ind,...
+            desc_frames_ind,cpt.batlow,[0 3],borders,'Scaled uncertainties')      
         
     end
     
@@ -180,11 +182,16 @@ disp('Grid unification complete')
 
 %% apply mask
 
-if par.use_mask ~= 0
+if par.use_mask == 1
     disp('Applying masks')    
     [vel_regrid,vstd_regrid,mask_regrid] ...
         = apply_masks(par,x_regrid,y_regrid,vel_regrid,vstd_regrid,...
         mask_regrid,asc_frames_ind,desc_frames_ind,fault_trace,borders);
+    
+elseif par.use_mask == 0
+    % standarise nan values across arrays (mask does this if used)
+    vel_regrid(vel_regrid==0) = nan;
+    vstd_regrid(isnan(vel_regrid)) = nan;
     
 end
 
@@ -250,11 +257,18 @@ if par.frame_overlaps == 1
     end
 end
 
-%% identify pixels without both asc and desc coverage
+%% check data coverage
 
+% check for at least one ascending and one descending velocity
 asc_coverage = any(~isnan(vel_regrid(:,:,asc_frames_ind)),3);
 desc_coverage = any(~isnan(vel_regrid(:,:,desc_frames_ind)),3);
 both_coverage = all(cat(3,asc_coverage,desc_coverage),3);
+
+% check North GNSS vels if used
+if par.decomp_method ~= 3
+    gnss_coverage = ~isnan(gnss_N);
+    both_coverage = all(cat(3,both_coverage,gnss_coverage),3);
+end
 
 %% velocity decomposition
 

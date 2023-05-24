@@ -1,4 +1,4 @@
-function plt_asc_desc_cells(par,lon,lat,data,mask,asc_frames_ind,desc_frames_ind,cpt,clim,borders)
+function plt_asc_desc_cells(par,lon,lat,data,mask,asc_frames_ind,desc_frames_ind,cpt,clim,borders,fig_title)
 %=================================================================
 % function preview_input_vels(cfgfile)
 %-----------------------------------------------------------------
@@ -12,7 +12,8 @@ function plt_asc_desc_cells(par,lon,lat,data,mask,asc_frames_ind,desc_frames_ind
 %                                    descending frames
 %   nframes: number of input velocity fields
 %   cpt: colour palette for plotting
-%   borders: structure containing polygons defining country borders 
+%   borders: structure containing polygons defining country borders
+%   fig_title: title for main figure
 %
 % Andrew Watson     28-04-2023
 %                                                                  
@@ -33,7 +34,7 @@ end
 f = figure();
 f.Position([1 3 4]) = [600 1600 600];
 t = tiledlayout(1,2,'TileSpacing','compact');
-title(t,'Input velocities')
+title(t,fig_title)
 
 % plot ascending tracks
 t(1) = nexttile; hold on
