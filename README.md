@@ -47,7 +47,7 @@ DIV works through the following processing steps, many of which can be altered u
 ## Config file
 The example config file provides short descriptions of each option. Below, I give further details.
 
-### para_cores
+### para_cores (CURRENTLY DISABLED)
 The number of parallel processes to run for the decomposition, which is performed pixel-by-pixel.
 Setting to zero use a `for` loop as opposed to a `parfor` loop.
 
@@ -62,35 +62,53 @@ Semivariogram model used to scale the uncertainties.
  - exp - Use an exponential model.
  - sph - Use a spherical model. 
 
-### tie2gnss
-Shift relative InSAR velocities into a common reference frame defined by interpolated GNSS velocities (e.g. relative -> Eurasia-fixed).
-See Hussain et al. (2016), Weiss et al. (2020), and Ou et al. (2022) for examples.
-The steps are as follows for each frame:
- 1. Project the interpolated GNSS velocities into the satellite line-of-sight.
- 2. Calculate the residual between the InSAR and the projected GNSS.
- 3. Apply a mask to the residuals using a linear deramp and upper and lower limits, to mitigate the impact of large, short-wavelength signals (e.g. subsidece).
- 4. Either fit a polynomial surface to the residuals, or apply a gaussian filter, to mitigate short-wavelength signals.
- 5. Subtract the result from the InSAR.
+### ref2gnss
+Shift the relative InSAR velocities for each frame/track into the same reference frame as a set of GNSS velocities.
+Can be performed using either GNSS station velocities (e.g. Hussain et al. 2016) or interpolated GNSS velocities (e.g. Weiss et al. 2020).
+See Ou et al. (2022) for another example (slightly different method).
 
-Two methods for smoothing the residuals are currently included:
- - 0 - disables the referencing.
- - 1 - fit a polynomial surface to the residuals (based on Weiss et al. 2020).
- - 2 - apply a gaussian filter to the residuals (inspired by Xu et al. 2021).
+Broad steps:
+ 1. Project East and North GNSS velocities into line-of-sight.
+ 2. Calculate residual between LOS GNSS and LOS InSAR velocities.
+ 3. Apply a mask to the residuals using a linear deramp and upper and lower limits, to mitigate the impact of large, short-wavelength signals (e.g. subsidece).
+ 4. Smooth the residuals in some manner, either through fitting a polynomial function, or by applying a spatial filter.
+ 5. Subtract the smoothed residuals from the InSAR.
+
+In the case of GNSS stations, the residual is calculated using the mean of the InSAR velocities within a given radius of each station (defined below).
+In the case of interpolated GNSS velocities, the interpolation must be performed before running DIV.
+
+Three options are currently included:
+ - 0 - disable referencing.
+ - 1 - use GNSS station velocities.
+ - 2 - use GNSS interpolated velocities.
+
+### ref_type
+Select how the GNSS-InSAR residual is smoothed to create the "referencing surface".
+Options are:
+ - 1 - use a polynomial function (based on Weiss et al. 2020).
+ - 2 - use a median filter, only works with interpolated GNSS velocities (ref2gnss=2) (inspired by Xu et al. 2021).
 
 ### ref_poly_order
-Set the order of the polynomial surface used for referencing when tie2gnss = 1.
+When using a polynomial to create the referencing surface (ref_type=1), set the order of the 2-D polynomial function.
+Options are:
  - 1 - first order (ax + by + c).
  - 2 - second order (ax^2 + b^y2 + cxy + dx + ey + f).
 
 ### ref_filter_window_size
-Set the window size for the sliding Gaussian filter used to smooth the residuals when tie2gnss = 2.
+When using a median filter to create the referencing surface (ref_type=2), set the width of the filter window in terms of the number of pixels.
 Must be an odd number of pixels (so the map area covered by the filter will change if the resolution changes).
+
+### ref_station_radius
+When referencing to GNSS station velocities (ref2gnss=1), set the radius around each station that is used to calculate the mean InSAR LOS velocity. Units are the same as the input coordinate system (e.g. in degrees for lon-lat).
 
 ### ds_factor and ds_method
 Applies downsampling to the input velocities, taking either the mean or the median of a given window size (ds_factor x ds_factor).
 This can improve the computational requirements of later steps (useful for testing).
+For ds_method, the options are:
+ - mean
+ - median
 
-### usemask
+### use_mask
 Using pre-masked velocities can lead to smearing or shrinking of the masked area if additional downsapling is performed within DIV.
 Hence, I recommend providing unmasked velocities and a matching mask file, which is then optionally applied after both regridding and downsampling.
 
@@ -100,12 +118,14 @@ This requires that the frame directories have been given in order for each track
 Options are:
  - 0 - disables.
  - 1 - apply the shift to each frame, but leave the frames seperate (i.e. don't take the mean to fully merge them).
- - 2 - take the mean of overlapping points, combining multiple frames into a single velocity field.
+ - 2 - take the weighted mean of overlapping points, combining multiple frames into a single velocity field. Weights are 1/vstd^2.
 
 ### merge_tracks_along_func
 Function used to perform the track merging. This is what is fit to the overlapping pixels and then removed from the entire frame to perform the "merge".
- - 0 - scalar offset.
+ - 0 - mean difference.
  - 1 - first order polynomial plane (ax + by + c).
+ - 2 - median difference.
+ - 3 - mode difference (rounded to the nearest 0.1)
 
 ### merge_tracks_across
 Merge adjacent tracks into a continuous velocity field.
@@ -135,9 +155,10 @@ Options are:
 
 ### decomp_method
 Set the method for decomposing the line-of-sight velocities into East and Vertical velocities.
- - 1 - project the North GNSS velocities into line-of-sight for each frame, and subtract them from the InSAR. Then, decompose into East and Vertical.
- - 2 - include the North GNSS velocities as an input to the decomposition, and solve for East, North, and Vertical.
- - 3 - decompose into East and a joint Vertical-North plane, and then split the latter into Vertical and North components (see Ou et al. 2022).
+ - 0 - project the North GNSS velocities into line-of-sight for each frame, and subtract them from the InSAR. Then, decompose into East and Vertical (e.g. Weiss et al., 2020).
+ - 1 - include the North GNSS velocities as an input to the decomposition, and solve for East, North, and Vertical.
+ - 2 - decompose into East and a joint Vertical-North plane, and then split the latter into Vertical and North components (e.g. Ou et al., 2022).
+ - 3 - assume North is zero.
 
 ### condG_threshold
 This is a threshold on the value of cond(G), where G is the design matrix for the velocity decomposition.
@@ -166,7 +187,18 @@ Options are:
 For the following parameters, the only options are 0 (disables) or 1 (enables).
 
 ### save_geotif
-Write the decomposed East, Vertical, and North velocities to geotifs, using the same projection as the inputs.
+Write the decomposed East and vertical velocities to geotiffs, using the same projection as the inputs.
+
+### save_grd
+Write the decomposed East and vertical velocities to GMT grd files, using the same projection as the inputs.
+
+### save_frames
+Write the regridded and modified frame velocities to geotiffs.
+Currently, this doesn't work with merged tracks.
+
+### save_overlaps
+Write the along-track overlaps, after subtraction of a given function, to text files.
+Used for plotting histograms to assess the consistency between adjacent frames.
 
 ### plt_faults
 Plot fault traces on the decomposed velocity maps.
@@ -188,6 +220,7 @@ Plot the merged tracks, split into ascending and descending.
 
 ### plt_merge_along_corr
 For each track, plot the original frame velocities, and the new merged velocity(s).
+Giving 2 as an input makes this pause on each overlap until the figures are closed.
 
 ### plt_merge_along_resid
 Plot the residual overlap velocities for all frames.
@@ -217,8 +250,11 @@ Plot the masks for the cond(G) and model variance thresholds.
 
 The following parameters are all paths to inputs files. I recommend using absolute paths, but relative paths will also work.
 
-### gnss_file
+### gnss_fields_file
 Path to a .mat file containing the interpolated GNSS velocities.
+
+### gnss_stations_file
+Path to a .csv file containing GNSS stations velocities.
 
 ### faults_file
 Path to a text file containing coordinates for faults (see plotting/misc/).
@@ -254,8 +290,8 @@ This allows for multiple versions of the velocities to be toggled between withou
 
 ## Input file formats
 
-### gnss_file
-GNSS file should be a .mat file containing structure with the following:
+### gnss_fields_file
+GNSS fields file should be a .mat file containing structure with the following:
 ```
     gnss_field.x - vector of x axis coords (n)
     gnss_field.y - vector of y axis coords (m)
@@ -267,6 +303,13 @@ Optional extras:
     gnss_field.sN - grid of north 1-sigma uncertainties (mxn)
     gnss_field.sE - grid of east 1-sigma uncertainties (mxn)
 ```
+
+### gnss_stations_file
+GNSS stations file should be a .csv file containing the following columns, with one row per stations:
+```
+Lon  Lat  vE  vN  sE  sN  cov
+```
+where vE and vN are the East and North velocities, sE and sN are the one-sigma uncertainties, and cov is the covariance between vE and vN.
 
 ### faults_file
 Text file containing fault lines for plotting.

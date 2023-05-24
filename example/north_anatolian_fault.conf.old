@@ -11,35 +11,26 @@ para_cores: 0
 % scale input velocity uncertainties (0 disables)
 scale_vstd: 1
 
-% scaling function (sph=spherical, exp=exponential)
-scale_vstd_model: exp
+% ties insar vels to gnss vels (0 disables, 1=poly, 2=filt)
+tie2gnss: 2
 
-% ties insar vels to gnss vels (0 disables, 1=stations, 2=fields)
-ref2gnss: 2
-
-% reference surface type (1=poly, 2=filter)
-ref_type: 2
-
-% order of polynomial surface for referenceing if used (1=1st order, 2=2nd order)
+% order of polynomial surface for referenceing if used [tie2gnss=1] (1=1st order, 2=2nd order)
 ref_poly_order: 2
 
-% window size of filter if used, in pixels, must be odd [ref2gnss=2]
+% window size of filter if used, in pixels, must be odd [tie2gnss=2]
 ref_filter_window_size: 51
-
-% radius of vels around each gnss stations to use (same coordinate units as input vels)
-ref_station_radius: 0.05
 
 % downsampling factor (0 disables) and method (mean or median)
 ds_factor: 0
 ds_method: mean
 
 % apply mask to vels
-use_mask: 1
+usemask: 1
 
 % merge along-track (0 disables, 1=reference but keep frames seperate, 2=take mean in overlaps)
 merge_tracks_along: 0
 
-% merge along-track function (0=mean, 1=1st order plane, 2=median, 3=mode)
+% merge along-track function (0=static, 1=1st order plane)
 merge_tracks_along_func: 0
 
 % merge across-track (0 disables)
@@ -51,7 +42,7 @@ plate_motion: 0
 % gnss uncertainty (0 disables, 1=propagate N uncer through decomp)
 gnss_uncer: 0
 
-% decomposition method (0=remove N GNSS, 1=include N GNSS in inversion, 2=Qi's vUN method, 3=assume N is zero)
+% decomposition method (0=remove N GNSS, 1=include N GNSS in inversion, 2=Qi's vUN method)
 decomp_method: 0
 
 % threshold for cond(G) (0 disables)
@@ -68,9 +59,6 @@ frame_overlaps: 0
 
 % save outputs as geotifs
 save_geotif: 0
-save_grd: 0
-save_frames: 0
-save_overlaps: 0
 
 % plot fault traces
 plt_faults: 1
@@ -82,11 +70,11 @@ plt_borders: 1
 plt_input_vels: 1
 
 % plot scaled uncertainties for each frame
-plt_scale_vstd_indv: 1
-plt_scale_vstd_all: 0
+plt_scale_vstd_indv: 0
+plt_scale_vstd_all: 1
 
 % merge_track_plotting
-plt_merge_tracks: 0
+plt_merge_tracks: 1
 plt_merge_along_corr: 0
 plt_merge_along_resid: 0
 
@@ -99,7 +87,6 @@ plt_plate_motion_indv: 0
 
 % plot reference to gnss
 plt_ref_gnss_indv: 0
-plt_ref_gnss_surfaces: 0
 
 % plot decomposed velocity uncertainties
 plt_decomp_uncer: 0
@@ -111,17 +98,13 @@ plt_threshold_masks: 0
 % GERERAL PATHS
 
 % path to gnss file
-gnss_fields_file: example/GNSS/gnss.mat
-gnss_stations_file: 
+gnss_file: example/GNSS/gnss.mat
 
 % fault trace file
 faults_file: plotting/misc/gem_active_faults.gmt
 
-% border file
+% borders
 borders_file: plotting/misc/borderdata.mat
-
-% plate motion vector file
-plate_motion_file: 
 
 % output directory
 out_path: example/outputs/

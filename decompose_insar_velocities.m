@@ -1,11 +1,11 @@
 function decompose_insar_velocities(config_file)
 %% decompose_insar_velocities.m
 %
-% Decomposes line-of-sight velocities (primarily from LiCSBAS into a
+% Decomposes line-of-sight velocities (primarily from LiCSBAS) into a
 % combination of North, East, and Up velocities, assuming no covariance
 % between adjacent pixels. All frames are interpolated onto a new grid.
 %
-% InSAR velocities may be referenced to a GNSS velocity field (tie2gnss)
+% InSAR velocities may be referenced to a GNSS velocity field (ref2gnss)
 % via various methods, and then decomposed into East and Vertical
 % components.
 %
@@ -61,13 +61,11 @@ for ii = 1:length(insarpar.dir)
 end
 
 % remove missing file dirs
-insarpar.dir(to_remove) = [];
+insarpar.dir(to_remove) = []; clear to_remove
 
 %% load inputs
 
 disp('Loading inputs')
-% larger arrays stored as single, which is sufficient given the
-% uncertainties
 
 % number of velocity maps inputted
 nframes = length(insarpar.dir);
@@ -77,13 +75,14 @@ if length(unique(insarpar.dir)) ~= nframes
 end
 
 % load main inputs
-[lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,frames,...
-    asc_frames_ind,desc_frames_ind,fault_trace,gnss_field,borders] = load_inputs(par,insarpar);
+[lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,poly_mask,frames,...
+    asc_frames_ind,desc_frames_ind,fault_trace,gnss,borders] = load_inputs(par,insarpar);
 
 % colour palettes  (https://www.fabiocrameri.ch/colourmaps/)
-load('plotting/cpt/vik.mat')
-load('plotting/cpt/batlow.mat')
-cpt.vik = vik; cpt.batlow = batlow;
+vik = importdata('plotting/cpt/vik.mat');
+batlow = importdata('plotting/cpt/batlow.mat');
+cpt.vik = vik; cpt.batlow = batlow; 
+clear vik batlow
 
 %% preview inputs
 
@@ -91,36 +90,8 @@ if par.plt_input_vels == 1
     
     disp('Plotting preview of input velocities')
     
-    % set plotting parameters
-    lonlim = [min(cellfun(@min,lon)) max(cellfun(@max,lon))]; 
-    latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))];
-    clim = [-10 10];
-    
-    % temporarily apply mask for plotting
-    vel_tmp = vel;
-    for ii = 1:nframes
-        vel_tmp{ii}(mask{ii}==0) = nan;
-        vel_tmp{ii} = vel_tmp{ii} - median(vel_tmp{ii},'all','omitnan');
-    end
-    
-    f = figure();
-    f.Position([1 3 4]) = [600 1600 600];
-    t = tiledlayout(1,2,'TileSpacing','compact');
-    title(t,'Input velocities')
-    
-    % plot ascending tracks
-    t(1) = nexttile; hold on
-    plt_data(lon(asc_frames_ind),lat(asc_frames_ind),vel_tmp(asc_frames_ind),...
-        lonlim,latlim,clim,'Ascending (mm/yr)',[],borders)
-    colormap(t(1),cpt.vik)
-    
-    % plot descending tracks
-    t(2) = nexttile; hold on
-    plt_data(lon(desc_frames_ind),lat(desc_frames_ind),vel_tmp(desc_frames_ind),...
-        lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
-    colormap(t(2),cpt.vik)
-    
-    clear vel_tmp
+    plt_asc_desc_cells(par,lon,lat,vel,mask,asc_frames_ind,...
+        desc_frames_ind,cpt.vik,[-10 10],borders,'Input velocities')
     
 end
 
@@ -156,27 +127,8 @@ if par.ds_factor > 0
     
     disp(['Downsampling inputs by a factor of ' num2str(par.ds_factor)])
     
-    for ii = 1:nframes
-    
-        [vel{ii},lon{ii},lat{ii}] ...
-            = downsample_array(vel{ii},par.ds_factor,par.ds_factor,par.ds_method,lon{ii},lat{ii});        
-        [vstd{ii},~,~] = downsample_array(vstd{ii},par.ds_factor,par.ds_factor,par.ds_method);
-        
-        [compE{ii},lon_comp{ii},lat_comp{ii}] ...
-            = downsample_array(compE{ii},par.ds_factor,par.ds_factor,par.ds_method,lon_comp{ii},lat_comp{ii});
-        [compN{ii},~,~] = downsample_array(compN{ii},par.ds_factor,par.ds_factor,par.ds_method);
-        [compU{ii},~,~] = downsample_array(compU{ii},par.ds_factor,par.ds_factor,par.ds_method);
-        
-        if par.usemask == 1
-            [mask{ii},~,~] ...
-                =  downsample_array(mask{ii},par.ds_factor,par.ds_factor,par.ds_method);
-        end
-        
-        if (mod(ii,round(nframes./10))) == 0
-            disp([num2str(round((ii./nframes)*100)) '% completed']);
-        end
-        
-    end
+    [lon,lat,vel,vstd,compE,compN,compU,mask] ...
+        = downsamp(par,nframes,lon,lat,vel,vstd,compE,compN,compU,mask);
     
 end
 
@@ -190,8 +142,14 @@ if par.scale_vstd == 1
     
     for ii = 1:nframes
         
+        % temp apply mask if request
+%         vstd_temp = vstd{ii};
+%         if par.use_mask == 1
+%             vstd_temp(mask{ii}==0) = NaN;
+%         end            
+        
         % apply scaling
-        [vstd{ii},scale_vstd_misfit(ii)] = scale_vstd(par,lon{ii},lat{ii},vstd{ii});
+        [vstd{ii},scale_vstd_misfit(ii)] = scale_vstd(par,lon{ii},lat{ii},vstd{ii},frames{ii});
         
         % report progress
         if (mod(ii,round(nframes./10))) == 0
@@ -200,39 +158,10 @@ if par.scale_vstd == 1
     end
     
     % plot all if requested
-    if par.plt_scale_vstd_all == 1
-       
-        disp('Plotting scaled uncertainties')
-    
-        % set plotting parameters
-        lonlim = [min(cellfun(@min,lon)) max(cellfun(@max,lon))]; 
-        latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))]; 
-        clim = [0 3];
-
-        % temporarily apply mask for plotting
-        vstd_tmp = vstd;
-        for ii = 1:nframes
-            vstd_tmp{ii}(mask{ii}==0) = nan;
-        end
-
-        f = figure();
-        f.Position([1 3 4]) = [600 1600 600];
-        t = tiledlayout(1,2,'TileSpacing','compact');
-        title(t,'Scaled uncertainties (mm/yr)^2')
-
-        % plot ascending tracks
-        t(1) = nexttile; hold on
-        plt_data(lon(asc_frames_ind),lat(asc_frames_ind),vstd_tmp(asc_frames_ind),...
-            lonlim,latlim,clim,'Ascending (mm/yr)',[],borders)
-        colormap(t(1),cpt.batlow)
-
-        % plot descending tracks
-        t(2) = nexttile; hold on
-        plt_data(lon(desc_frames_ind),lat(desc_frames_ind),vstd_tmp(desc_frames_ind),...
-            lonlim,latlim,clim,'Descending (mm/yr)',[],borders)
-        colormap(t(2),cpt.batlow)
-        
-        clear vstd_tmp
+    if par.plt_scale_vstd_all == 1       
+        disp('Plotting scaled uncertainties')        
+        plt_asc_desc_cells(par,lon,lat,vstd,mask,asc_frames_ind,...
+            desc_frames_ind,cpt.batlow,[0 3],borders,'Scaled uncertainties')      
         
     end
     
@@ -242,84 +171,9 @@ end
 
 disp('Unifying grids')
 
-% limits and intervals for new grid
-x_regrid = min(cellfun(@min,lon)) : min(cellfun(@min,dx)) : max(cellfun(@max,lon));
-y_regrid = min(cellfun(@min,lat)) : min(cellfun(@min,dy)) : max(cellfun(@max,lat));
-dx = min(cellfun(@min,dx)); dy = min(cellfun(@min,dy));
-
-% new grid to project data onto
-[xx_regrid,yy_regrid] = meshgrid(x_regrid,y_regrid); 
-
-% pre-allocate
-vel_regrid = single(zeros([size(xx_regrid) nframes]));
-vstd_regrid = single(zeros(size(vel_regrid))); mask_regrid = single(zeros(size(vel_regrid)));
-compE_regrid = single(zeros(size(vel_regrid))); compN_regrid = single(zeros(size(vel_regrid)));
-compU_regrid = single(zeros(size(vel_regrid)));
-
-for ii = 1:nframes
-    
-    % reduce interpolation area using coords of frame
-    [~,xind_min] = min(abs(x_regrid-lon{ii}(1)));
-    [~,xind_max] = min(abs(x_regrid-lon{ii}(end)));
-    [~,yind_min] = min(abs(y_regrid-lat{ii}(end)));
-    [~,yind_max] = min(abs(y_regrid-lat{ii}(1)));    
-    
-    % interpolate vel, vstd, and optional mask
-    [xx,yy] = meshgrid(lon{ii},lat{ii});
-    vel_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
-        = interp2(xx,yy,vel{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
-        yy_regrid(yind_min:yind_max,xind_min:xind_max));
-    
-    vstd_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
-        = interp2(xx,yy,vstd{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
-        yy_regrid(yind_min:yind_max,xind_min:xind_max));
-    
-    if par.usemask == 1
-        mask_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
-            = interp2(xx,yy,mask{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
-            yy_regrid(yind_min:yind_max,xind_min:xind_max));
-    end
-    
-    % ENU may not be downsampled by licsbas, hence different xx yy grids
-    [xx,yy] = meshgrid(lon_comp{ii},lat_comp{ii});
-    compE_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
-        = interp2(xx,yy,compE{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
-        yy_regrid(yind_min:yind_max,xind_min:xind_max));
-    compN_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
-        = interp2(xx,yy,compN{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
-        yy_regrid(yind_min:yind_max,xind_min:xind_max));
-    compU_regrid(yind_min:yind_max,xind_min:xind_max,ii) ...
-        = interp2(xx,yy,compU{ii},xx_regrid(yind_min:yind_max,xind_min:xind_max),...
-        yy_regrid(yind_min:yind_max,xind_min:xind_max));
-    
-    % report progress
-    if (mod(ii,round(nframes./10))) == 0
-        disp([num2str(round((ii./nframes)*100)) '% completed']);
-    end
-    
-end
-
-% resample gnss
-if par.tie2gnss ~= 0
-    [xx_gnss,yy_gnss] = meshgrid(gnss_field.x,gnss_field.y);
-    gnss_E = interp2(xx_gnss,yy_gnss,gnss_field.E,xx_regrid,yy_regrid);
-    gnss_N = interp2(xx_gnss,yy_gnss,gnss_field.N,xx_regrid,yy_regrid);
-    
-    % resample gnss uncertainties if using
-    if par.gnss_uncer == 1
-        gnss_sE = interp2(xx_gnss,yy_gnss,gnss_field.sE,xx_regrid,yy_regrid);
-        gnss_sN = interp2(xx_gnss,yy_gnss,gnss_field.sN,xx_regrid,yy_regrid);
-    else
-        gnss_sE = [];
-        gnss_sN = [];
-    end
-end
-
-% change zeros to nans
-vstd_regrid(vstd_regrid==0) = nan;
-compE_regrid(compE_regrid==0) = nan;
-compN_regrid(compN_regrid==0) = nan;
-compU_regrid(compU_regrid==0) = nan;
+[x_regrid,y_regrid,xx_regrid,yy_regrid,vel_regrid,vstd_regrid,...
+    mask_regrid,compE_regrid,compU_regrid,compN_regrid,gnss_E,gnss_N,gnss_sE,gnss_sN] ...
+    = unify_grids(par,lon,lat,lon_comp,lat_comp,dx,dy,vel,vstd,mask,compE,compU,compN,gnss);
 
 % clear ungridded data
 clear vel vstd compE compN compU
@@ -328,60 +182,16 @@ disp('Grid unification complete')
 
 %% apply mask
 
-if par.usemask == 1
+if par.use_mask == 1
+    disp('Applying masks')    
+    [vel_regrid,vstd_regrid,mask_regrid] ...
+        = apply_masks(par,x_regrid,y_regrid,vel_regrid,vstd_regrid,...
+        mask_regrid,asc_frames_ind,desc_frames_ind,fault_trace,borders);
     
-    disp('Applying mask')
-    
-    % account for previous downsampling
-    mask_regrid(isnan(mask_regrid)) = 0;
-    mask_regrid(mask_regrid>=0.5) = 1; mask_regrid(mask_regrid<0.5) = 0;
-    vel_regrid(mask_regrid==0) = NaN;
-    vstd_regrid(mask_regrid==0) = NaN;
-    
-    % convert to logical
-    mask_regrid = logical(mask_regrid);
-
-end
-
-%% plot ascending and descending masks
-% Produces two masks that are useful for plotting.
-% For overlaps, a given point is considered unmasked if it is unmasked in
-% at least one of the masks.
-
-if par.plt_mask_asc_desc == 1
-    
-    disp('Plotting ascending and descending masks')
-    
-    % look direction indices
-    asc_frames_ind = find(cellfun(@(x) strncmp('A',x(4),4), frames));
-    desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
-    
-    % sum masks
-    mask_asc = sum(mask_regrid(:,:,asc_frames_ind),3);
-    mask_desc = sum(mask_regrid(:,:,desc_frames_ind),3);
-    
-    % return to ones and zeros
-    mask_asc(mask_asc>=1) = 1;
-    mask_desc(mask_desc>=1) = 1;
-    mask_asc(mask_asc<1) = 0;
-    mask_desc(mask_desc<1) = 0;
-    mask_asc(isnan(mask_asc)) = 0;
-    mask_desc(isnan(mask_desc)) = 0;
-    
-    % plot
-    lonlim = [min(x_regrid) max(x_regrid)];
-    latlim = [min(y_regrid) max(y_regrid)];
-    
-    f = figure();
-    f.Position([1 3 4]) = [600 1600 600];
-    t = tiledlayout(1,2,'TileSpacing','compact');
-    title('Combined masks for ascending and descending')
-    
-    t(1) = nexttile; hold on
-    plt_data(x_regrid,y_regrid,mask_asc,lonlim,latlim,[],'Ascending mask',fault_trace,borders)
-    
-    t(2) = nexttile; hold on
-    plt_data(x_regrid,y_regrid,mask_desc,lonlim,latlim,[],'Descending mask',fault_trace,borders)
+elseif par.use_mask == 0
+    % standarise nan values across arrays (mask does this if used)
+    vel_regrid(vel_regrid==0) = nan;
+    vstd_regrid(isnan(vel_regrid)) = nan;
     
 end
 
@@ -422,26 +232,43 @@ end
 
 %% tie to gnss
 % Shift InSAR velocities into the same reference frame as the GNSS
-% velocities. Method is given by par.tie2gnss. 
+% velocities. Method is given by par.ref2gnss. 
 
-if par.tie2gnss ~= 0
+if par.ref2gnss == 1
+    disp('Referencing InSAR to GNSS station velocities')
+    vel_regrid = ref_to_gnss_stations(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
+        compE_regrid,compN_regrid,gnss,asc_frames_ind,desc_frames_ind);   
+    
+elseif par.ref2gnss == 2
     disp('Referencing InSAR to interpolated GNSS velocities')
-    [vel_regrid] = ref_to_gnss(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
-        compE_regrid,compN_regrid,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind);    
+    vel_regrid = ref_to_gnss_fields(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
+        compE_regrid,compN_regrid,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind);
+    
 end
 
 %% calculate frame overlaps if requested
 
 if par.frame_overlaps == 1
     disp('Calculating frame overlap statistics')
-    frame_overlap_stats(vel_regrid,frames,compU_regrid);
+    if par.merge_tracks_along == 2
+        frame_overlap_stats(vel_regrid,tracks,compU_regrid);
+    else
+        frame_overlap_stats(vel_regrid,frames,compU_regrid);
+    end
 end
 
-%% identify pixels without both asc and desc coverage
+%% check data coverage
 
+% check for at least one ascending and one descending velocity
 asc_coverage = any(~isnan(vel_regrid(:,:,asc_frames_ind)),3);
 desc_coverage = any(~isnan(vel_regrid(:,:,desc_frames_ind)),3);
 both_coverage = all(cat(3,asc_coverage,desc_coverage),3);
+
+% check North GNSS vels if used
+if par.decomp_method ~= 3
+    gnss_coverage = ~isnan(gnss_N);
+    both_coverage = all(cat(3,both_coverage,gnss_coverage),3);
+end
 
 %% velocity decomposition
 
@@ -514,7 +341,7 @@ if par.plt_decomp_uncer == 1
 
     lonlim = [min(x_regrid) max(x_regrid)];
     latlim = [min(y_regrid) max(y_regrid)];
-    clim = [0 4];
+    clim = [0 2];
 
     f = figure();
     f.Position([1 3 4]) = [600 2000 800];
@@ -543,6 +370,8 @@ if par.plt_threshold_masks == 1
     
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
+    
+    
     t = tiledlayout(1,2,'TileSpacing','compact');
     title(t,'Threshold masks')
     
@@ -556,6 +385,7 @@ end
 
 %% save outputs
 
+% save geotiffs
 if par.save_geotif == 1
     
     disp('Saving the following outputs:')
@@ -571,7 +401,78 @@ if par.save_geotif == 1
     % write geotifs
     geotiffwrite([par.out_path par.out_prefix '_vU.geo.tif'],m_up,georef)
     geotiffwrite([par.out_path par.out_prefix '_vE.geo.tif'],m_east,georef)
-    geotiffwrite([par.out_path par.out_prefix '_vN.geo.tif'],m_north,georef)
+    geotiffwrite([par.out_path par.out_prefix '_sU.geo.tif'],var_up,georef)
+    geotiffwrite([par.out_path par.out_prefix '_sE.geo.tif'],var_east,georef)
+    
+    if exist('m_north','var')
+        geotiffwrite([par.out_path par.out_prefix '_vN.geo.tif'],m_north,georef)
+    end
+    
+end
+
+% save grd files
+if par.save_grd == 1
+    
+    disp('Saving the following outputs:')
+    disp([par.out_path par.out_prefix '_vU.grd'])
+    disp([par.out_path par.out_prefix '_vE.grd'])
+    disp([par.out_path par.out_prefix '_vN.grd'])
+    
+    % write grd files
+    grdwrite2(x_regrid,y_regrid,m_up,[par.out_path par.out_prefix '_vU.grd']);
+    grdwrite2(x_regrid,y_regrid,m_east,[par.out_path par.out_prefix '_vE.grd']);
+    grdwrite2(x_regrid,y_regrid,var_up,[par.out_path par.out_prefix '_sU.grd']);
+    grdwrite2(x_regrid,y_regrid,var_east,[par.out_path par.out_prefix '_sE.grd']);
+    
+    if exist('m_north','var')
+        grdwrite2(x_regrid,y_regrid,m_north,[par.out_path par.out_prefix '_vN.grd']);
+    end    
+    
+end
+
+% save frames / tracks
+if par.save_frames == 1
+    
+    % toggle between tracks and frames depending on if the merge has
+    % happened
+    if par.merge_tracks_along == 2
+        outdirs = tracks;
+        
+%         % identify repeated tracks and append a number
+%         [~,~,rep_ind] = unique(outdirs);
+%         for ii = 1:length(tracks)
+%             track_ind = strcmp(tracks,tracks{ii});
+    
+        % THIS NEEDS FINISHING - ERROR WHEN TRACKS GET SPLIT.
+            
+    else
+        outdirs = frames;
+    end
+    
+    % loop through frames / tracks
+    for ii = 1:nframes
+        
+        % create frame directory
+        mkdir([par.out_path outdirs{ii}])
+
+        % crop to minimise file size
+        [~,x_ind,y_ind,x_crop,y_crop] = crop_nans(vel_regrid(:,:,ii),x_regrid,y_regrid);
+        
+        % create georeference
+        georef = georefpostings([min(y_crop) max(y_crop)],...
+            [min(x_crop) max(x_crop)],size(vel_regrid(y_ind,x_ind,:)),'ColumnsStartFrom','south',...
+            'RowsStartFrom','west');    
+        
+        % write outputs
+        geotiffwrite(fullfile(par.out_path,outdirs{ii},'vel.geo.tif'),vel_regrid(y_ind,x_ind,ii),georef)
+        geotiffwrite(fullfile(par.out_path,outdirs{ii},'vstd.geo.tif'),vstd_regrid(y_ind,x_ind,ii),georef)
+        geotiffwrite(fullfile(par.out_path,outdirs{ii},'E.geo.tif'),compE_regrid(y_ind,x_ind,ii),georef)
+        geotiffwrite(fullfile(par.out_path,outdirs{ii},'N.geo.tif'),compN_regrid(y_ind,x_ind,ii),georef)
+        geotiffwrite(fullfile(par.out_path,outdirs{ii},'U.geo.tif'),compU_regrid(y_ind,x_ind,ii),georef)       
+        
+        disp([outdirs{ii} ' saved.'])
+        
+    end
     
 end
 

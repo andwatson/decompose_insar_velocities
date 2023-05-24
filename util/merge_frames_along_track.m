@@ -24,6 +24,14 @@ function [track_vel,track_compE,track_compN,track_compU,track_vstd,unique_tracks
 %                                                                  
 %=================================================================
 
+%% make output directory if saving overlaps is requested
+
+if par.save_overlaps == 1
+    if ~exist([par.out_path par.out_prefix '_overlaps'],'dir')
+        mkdir([par.out_path par.out_prefix '_overlaps'])
+    end
+end
+
 %% get unique tracks
 
 % get tracks from frame ids, removing duplicates
@@ -36,7 +44,6 @@ unique_tracks = unique(tracks);
 track_vel = nan([size(vel,[1 2]) length(unique_tracks)]);
 track_compE = nan(size(track_vel)); track_compN = nan(size(track_vel));
 track_compU = nan(size(track_vel)); track_vstd = nan(size(track_vel));
-if par.plt_merge_along_resid == 1; overlaps = cell(1,size(vel,3)); n_ov = 1; end
 
 % account for frames that merge into more than one veocity field as a 
 % result of empty overlaps
@@ -57,60 +64,36 @@ for ii = 1:length(unique_tracks)
     % pre-allocate
     multi_segment = zeros(length(track_ind),2);
     multi_segment_ind = 1;
+    overlaps = cell(length(track_ind)-1,1);
+    n_ov = 1;
+    
+    % loop through adjcent pairings along-track
+    for jj = 1:length(track_ind)-1
         
-    switch par.merge_tracks_along_func
-        case 0 % static offset
-            
-            % loop through adjcent pairings along-track
-            for jj = 1:length(track_ind)-1
-                
-                % calculate residual between overlap and remove nans           
-                overlap_resid = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
-                overlap_resid(isnan(overlap_resid)) = [];
-                
-                if isempty(overlap_resid)
-                    disp('No overlap, splitting into multiple segments')
-                    
-                    % save indexes of non-overlapping frames
-                    multi_segment(multi_segment_ind,:) = [jj jj+1];
-                    multi_segment_ind = multi_segment_ind + 1;
-                    continue
-                end
-                
-                % solve linear inverse for offset
-                G = ones(length(overlap_resid),1);
-                m = (G'*G)^-1*G'*overlap_resid(:);
-                
-                % apply offset
-                vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - m;
-                
-                % save overlap for plotting
-                if par.plt_merge_along_resid == 1
-                    overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
-                    n_ov = n_ov + 1;
-                end
-                
-            end
-            
-            
-        case 1 % 1st order plane
-            
-            % loop through adjcent pairings along-track
-            for jj = 1:length(track_ind)-1
-                
-                % calculate residual between overlap and remove nans           
-                overlap_resid = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
-                x_overlap = xx(~isnan(overlap_resid)); y_overlap = yy(~isnan(overlap_resid));
-                overlap_resid(isnan(overlap_resid)) = [];
-                
-                if isempty(overlap_resid)
-                    disp('No overlap, splitting into multiple segments')
-                    
-                    % save indexes of non-overlapping frames
-                    multi_segment(multi_segment_ind,:) = [jj jj+1];
-                    multi_segment_ind = multi_segment_ind + 1;
-                    continue
-                end
+        % calculate residual between overlap and remove nans           
+        overlap_resid = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
+        overlap_invalid_points = isnan(overlap_resid);
+        overlap_resid(overlap_invalid_points) = [];
+        
+        % check frames actually overlap, split if not
+        if isempty(overlap_resid)
+            disp('No overlap, splitting into multiple segments')
+
+            % save indexes of non-overlapping frames
+            multi_segment(multi_segment_ind,:) = [jj jj+1];
+            multi_segment_ind = multi_segment_ind + 1;
+            continue
+        end
+        
+        % calculate shift
+        switch par.merge_tracks_along_func
+            case 0 % mean difference               
+                vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) ...
+                    - mean(overlap_resid(:),'omitnan');
+                               
+            case 1 % best fitting ramp                
+                % valid coords
+                x_overlap = xx(~overlap_invalid_points); y_overlap = yy(~overlap_invalid_points);
                 
                 % solve lienar inverse for 1st order poly
                 G = [ones(length(x_overlap),1) x_overlap y_overlap];
@@ -120,14 +103,32 @@ for ii = 1:length(unique_tracks)
                 % apply plane
                 vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) - overlap_plane;
                 
-                % save overlap for plotting
-                if par.plt_merge_along_resid == 1
-                    overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
-                    n_ov = n_ov + 1;
-                end
                 
-            end
-            
+            case 2 % median difference
+                vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) ...
+                    - median(overlap_resid(:),'omitnan');
+                
+            case 3 % modal difference
+                vel(:,:,track_ind(jj+1)) = vel(:,:,track_ind(jj+1)) ...
+                    - mode(round(overlap_resid(:),1),'all');
+                
+        end
+               
+        % save overlap for plotting and/or saving
+        if par.plt_merge_along_resid == 1 || par.save_overlaps == 1
+            overlaps{n_ov} = vel(:,:,track_ind(jj+1)) - vel(:,:,track_ind(jj));
+            n_ov = n_ov + 1;
+        end
+        
+    end
+
+    % save overlaps for histograms
+    if par.save_overlaps == 1
+        overlaps = overlaps(~cellfun('isempty',overlaps));
+        for kk = 1:length(overlaps)
+            writematrix(overlaps{kk}(~isnan(overlaps{kk})),...
+                [par.out_path par.out_prefix '_overlaps/' unique_tracks{ind_count} '_' num2str(kk) '_along.txt'])
+        end
     end
     
     % remove unused rows
@@ -149,7 +150,7 @@ for ii = 1:length(unique_tracks)
             nexttile(); histogram(overlaps{nn});
             title(['Mean = ' num2str(round(mean(cropped_overlap(:),'omitnan'),2)) ...
                 ', SD = ' num2str(round(std(cropped_overlap(:),'omitnan'),2)) ...
-                'Median = ' num2str(round(median(cropped_overlap(:),'omitnan'),2))])
+                ', Median = ' num2str(round(median(cropped_overlap(:),'omitnan'),2))])
             overlap_stats(nn,:) = [mean(cropped_overlap(:),'omitnan') std(cropped_overlap(:),'omitnan')];
         end
         
@@ -159,8 +160,10 @@ for ii = 1:length(unique_tracks)
     if par.merge_tracks_along == 2
         
         if isempty(multi_segment)
-            % take mean of overlap and store new vel
-            track_vel(:,:,ind_count) = mean(vel(:,:,track_ind),3,'omitnan');
+            % take the weighted mean of overlap and store new vel
+            track_weights = 1 ./ vstd(:,:,track_ind);            
+            track_vel(:,:,ind_count) = sum(vel(:,:,track_ind).*track_weights,3,'omitnan') ...
+                ./ sum(track_weights,3,'omitnan');
 
             % merge component vectors
             track_compE(:,:,ind_count) = mean(compE(:,:,track_ind),3,'omitnan');
@@ -168,7 +171,7 @@ for ii = 1:length(unique_tracks)
             track_compU(:,:,ind_count) = mean(compU(:,:,track_ind),3,'omitnan');
 
             % merge pixel uncertainties
-            track_vstd(:,:,ind_count) = mean(vstd(:,:,track_ind),3,'omitnan');
+            track_vstd(:,:,ind_count) = 1 ./ sqrt( sum(track_weights,3,'omitnan') );
             
         else
             % number of segments
@@ -193,19 +196,24 @@ for ii = 1:length(unique_tracks)
             ind_count_inc = 0;
             for kk = 1:2:length(multi_segment)
                 
-                % take mean of subset of frames on track
+                % indices for this segment
+                track_ind_seg = track_ind(multi_segment(kk):multi_segment(kk+1));
+                
+                % take weighted mean of subset of frames on track             
+                track_weights = 1 ./ vstd(:,:,track_ind_seg);            
                 track_vel(:,:,ind_count+ind_count_inc) ...
-                    = mean(vel(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                    = sum(vel(:,:,track_ind_seg).*track_weights,3,'omitnan') ...
+                    ./ sum(track_weights,3,'omitnan');
                 
                 track_compE(:,:,ind_count+ind_count_inc) ...
-                    = mean(compE(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                    = mean(compE(:,:,track_ind_seg),3,'omitnan');
                 track_compN(:,:,ind_count+ind_count_inc) ...
-                    = mean(compN(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                    = mean(compN(:,:,track_ind_seg),3,'omitnan');
                 track_compU(:,:,ind_count+ind_count_inc) ...
-                    = mean(compU(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                    = mean(compU(:,:,track_ind_seg),3,'omitnan');
                 
-                track_vstd(:,:,ind_count+ind_count_inc) ...
-                    = mean(vstd(:,:,track_ind(multi_segment(kk):multi_segment(kk+1))),3,'omitnan');
+                % weighted uncertainties
+                track_vstd(:,:,ind_count+ind_count_inc) = 1 ./ sqrt( sum(track_weights,3,'omitnan') );
                 
                 % increment counter
                 ind_count_inc = ind_count_inc + 1;
@@ -219,7 +227,7 @@ for ii = 1:length(unique_tracks)
     end
     
     % plot original velocities and merged result
-    if par.plt_merge_along_corr == 2
+    if par.plt_merge_along_corr == 1 || par.plt_merge_along_corr == 2
         
         % plot original frames
         f1 = figure();
@@ -246,8 +254,12 @@ for ii = 1:length(unique_tracks)
         caxis([-10 10])
         colorbar
         axis xy
-
-        waitfor(f1); waitfor(f2)
+        
+        % weight for the figures to be closed to avoid bombarding the user
+        % when using a large number of frames
+        if par.plt_merge_along_corr == 2
+            waitfor(f1); waitfor(f2)
+        end
         
     end
     
@@ -256,6 +268,9 @@ for ii = 1:length(unique_tracks)
     
     % increment
     ind_count = ind_count + 1;
+    
+    % clear
+    clear overlaps
     
 end
 

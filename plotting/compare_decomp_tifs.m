@@ -6,8 +6,8 @@
 
 %% load inputs
 
-vel_file1 = '/scratch/eearw/decomp_frame_vels/out/ref_method_comp/indiv_frames_east.geo.tif';
-vel_file2 = '/scratch/eearw/decomp_frame_vels/out/ref_method_comp/merged_tracks_east.geo.tif';
+vel_file1 = '/scratch/eearw/decomp_frame_vels/out/thesis/20230202/iran_gacos_ml1_vE.geo.tif';
+vel_file2 = '/scratch/eearw/decomp_frame_vels/out/thesis/vEvU/iran_gacos_ml1_vE.geo.tif';
 
 [lon,lat,vel1,~,~] = read_geotiff(vel_file1);
 [~,~,vel2,~,~] = read_geotiff(vel_file2);
@@ -19,6 +19,7 @@ borders = load('/nfs/a285/homes/eearw/velmap/plotting/borderdata.mat');
 %% calculate residual and plot
 
 residual = vel1 - vel2;
+resid_vec = residual(~isnan(residual));
 
 lonlim = [min(lon) max(lon)];
 latlim = [min(lat) max(lat)];
