@@ -89,8 +89,8 @@ for ii = 1:size(vel,1)
     % skip points without coverage in both look directions
     if both_coverage(jj(ii),kk(ii)) == 0
         continue
-    end
-
+    end    
+    
     % make components
     if par.decomp_method == 0
         Qd = diag(vstd(ii,:));

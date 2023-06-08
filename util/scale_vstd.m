@@ -1,4 +1,4 @@
-function [vstd_scaled,rms_misfit] = scale_vstd(par,x,y,vstd)
+function [vstd_scaled,rms_misfit] = scale_vstd(par,x,y,vstd,frame)
 %=================================================================
 % function vstd_scale()
 %-----------------------------------------------------------------
@@ -20,18 +20,33 @@ function [vstd_scaled,rms_misfit] = scale_vstd(par,x,y,vstd)
 
 %% setup
 
+% convert to UTM
+dczone = utmzone(mean(x),mean(y));
+utmstruct = defaultm('utm'); 
+utmstruct.zone = dczone;  
+utmstruct.geoid = wgs84Ellipsoid;
+utmstruct = defaultm(utmstruct);
+
+[xx,yy] = meshgrid(x,y);
+
+[xx_utm,yy_utm] = mfwdtran(utmstruct,yy(:),xx(:));
+coords_utm = [xx_utm(:) yy_utm(:)]./1000;
+
 % hardcode number of bins
 nbins = 100;
 
 % identfy reference pixel by assuming that min value occurs there
 [~,min_ind] = min(vstd(:));
-[ref_row,ref_col] = ind2sub(size(vstd),min_ind);
+% [ref_row,ref_col] = ind2sub(size(vstd),min_ind);
 
 % calculate distance between reference pixel and all others pixels
-[xx,yy] = meshgrid(x,y);
-ref_dists = sqrt( (xx - xx(ref_row,ref_col)).^2 + (yy - yy(ref_row,ref_col)).^2 );
+% [xx,yy] = meshgrid(x,y);
+% ref_dists = sqrt( (xx - xx(ref_row,ref_col)).^2 + (yy - yy(ref_row,ref_col)).^2 );
+ref_dists = sqrt( (coords_utm(:,1) - coords_utm(min_ind,1)).^2 ...
+    + (coords_utm(:,2) - coords_utm(min_ind,2)).^2 );
 
-% mask distances with vstd
+% reshape and mask distances with vstd
+ref_dists = reshape(ref_dists,size(xx));
 ref_dists(isnan(vstd)) = nan;
 
 % calcualte bin medians and SD (hardcoded 100 bins), starting from 0
@@ -61,12 +76,13 @@ switch par.scale_vstd_model
 end
 
 % starting values
-m0 = [1 0.5 0.1];
+% m0 = [1 0.5 0.1];
+m0 = [20 0.5 0.1];
 
 % define limits, main one being that range can't be greater than the max
 % profile distance
 lower_lim = [0 0 0];
-upper_lim = [max_dist inf inf];
+upper_lim = [max_dist./3 inf inf];
 
 % create options for fminsearch
 options = optimset('MaxFunEvals',1000000);
@@ -135,6 +151,18 @@ if par.plt_scale_vstd_indv == 1
     title('Scaled uncertainties')
 
 end
+
+%% save output
+
+% outdir = '/nfs/a285/homes/eearw/gmt/thesis/chp4/scaled_uncer_all/data/';
+% 
+% grdwrite2(x,y,vstd,[outdir frame '_pre.grd'])
+% grdwrite2(x,y,vstd_scaled,[outdir frame '_post.grd'])
+% 
+% writematrix([ref_dists(:) vstd(:)],[outdir frame '_points_pre.txt'])
+% writematrix([ref_dists(:) vstd_scaled(:)],[outdir frame '_points_post.txt'])
+% writematrix([bin_mids(:) bin_fit(:)],[outdir frame '_fit.txt'])
+% writematrix(m_fit,[outdir frame '_fit_par.txt'])
 
 %% spherical model
 

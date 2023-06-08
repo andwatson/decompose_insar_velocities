@@ -15,6 +15,8 @@ function [data_deramp] = deramp(x,y,data,method)
 %                                                                  
 %=================================================================
 
+% change to double, otherwise fit throws a warning
+data = double(data);
 data_deramp = data;
 
 % default to 1st order if method not given

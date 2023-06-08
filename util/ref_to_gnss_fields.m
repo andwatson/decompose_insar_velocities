@@ -1,4 +1,4 @@
-function [vel] = ref_to_gnss(par,cpt,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind)
+function [vel] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind)
 %=================================================================
 % function ref_to_gnss()
 %-----------------------------------------------------------------
@@ -61,7 +61,7 @@ for ii = 1:nframes
     gnss_resid = vel_tmp - gnss_los;
     
     % method switch
-    switch par.tie2gnss
+    switch par.ref_type
         case 1 % polynomial surface
             
             % remove nans
@@ -106,7 +106,8 @@ for ii = 1:nframes
             gnss_resid_filtered = ndnanfilter(gnss_resid,'rectwin',windsize);
             
             % reapply nans
-            gnss_resid_filtered(isnan(gnss_resid)) = nan;
+%             gnss_resid_filtered(isnan(gnss_resid)) = nan;
+            gnss_resid_filtered(isnan(vel(:,:,ii))) = nan;
             
             % store
             gnss_resid_plane(:,:,ii) = gnss_resid_filtered;

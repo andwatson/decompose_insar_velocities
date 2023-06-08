@@ -8,7 +8,10 @@ function [par,insarpar] = readparfile(cfgfile)
 % INPUT:                                                           
 %   cfgfile: path to parameter text file (e.g. velmap.conf)
 % OUTPUT:                                                          
-%   par:  structure containing general parameters
+%   par:  structure containing general parameters (paths, processing
+%           toggles, plotting and output toggles)
+%   insarpar: structure containing InSAR specific options (extensions,
+%               number of frames, directories)
 %   
 % Adapted from the velmap function of the same name.
 %
@@ -30,14 +33,20 @@ cfgcell = readcell(cfgfile,'FileType','text','CommentStyle','%','Delimiter',':')
 
 %% paths
 
-% gnss path
-par.gnss_file = getparval(cfgcell,'gnss_file',[]);
+% gnss fields path
+par.gnss_fields_file = getparval(cfgcell,'gnss_fields_file',[]);
+
+% gnss stations path
+par.gnss_stations_file = getparval(cfgcell,'gnss_stations_file',[]);
 
 % fault path
 par.faults_file = getparval(cfgcell,'faults_file',[]);
 
 % borders path
 par.borders_file = getparval(cfgcell,'borders_file',[]);
+
+% external shapefile mask
+par.poly_mask_file = getparval(cfgcell,'poly_mask_file',[]);
 
 % output path
 par.out_path = getparval(cfgcell,'out_path',[]);
@@ -47,17 +56,35 @@ par.out_prefix = getparval(cfgcell,'out_prefix',[]);
 
 %% processing toggles
 
+% regridding coordinates
+par.auto_regrid = getparval(cfgcell,'auto_regrid',1);
+if par.auto_regrid == 0
+    par.crop_post_regrid = getparval(cfgcell,'crop_post_regrid',0);
+    
+    regrid_xmin = getparval(cfgcell,'regrid_xmin',[]);
+    regrid_xmax = getparval(cfgcell,'regrid_xmax',[]);
+    regrid_dx = getparval(cfgcell,'regrid_dx',[]);
+    regrid_ymin = getparval(cfgcell,'regrid_ymin',[]);
+    regrid_ymax = getparval(cfgcell,'regrid_ymax',[]);
+    regrid_dy = getparval(cfgcell,'regrid_dy',[]);
+    
+    par.regrid_x = regrid_xmin:regrid_dx:regrid_xmax;
+    par.regrid_y = regrid_ymin:regrid_dy:regrid_ymax;
+end
+
 % scale input velocity uncertainties
 par.scale_vstd = getparval(cfgcell,'scale_vstd',0);
 par.scale_vstd_model = getparval(cfgcell,'scale_vstd_model','sph');
 
 % tie to gnss
-par.tie2gnss = getparval(cfgcell,'tie2gnss',0);
+par.ref2gnss = getparval(cfgcell,'ref2gnss',0);
+par.ref_type = getparval(cfgcell,'ref_type',[]);
 par.ref_poly_order = getparval(cfgcell,'ref_poly_order',[]);
 par.ref_filter_window_size = getparval(cfgcell,'ref_filter_window_size',[]);
+par.ref_station_radius = getparval(cfgcell,'ref_station_radius',0);
 
 % use mask
-par.usemask = getparval(cfgcell,'usemask',0);
+par.use_mask = getparval(cfgcell,'use_mask',0);
 
 % downsampling
 par.ds_factor = getparval(cfgcell,'ds_factor',0);
@@ -93,6 +120,15 @@ par.frame_overlaps = getparval(cfgcell,'frame_overlaps',0);
 
 % save geotiffs
 par.save_geotif = getparval(cfgcell,'save_geotif',0);
+
+% save grd files
+par.save_grd = getparval(cfgcell,'save_grd',0);
+
+% save frames or tracks
+par.save_frames = getparval(cfgcell,'save_frames',0);
+
+% save overlaps as text files for plotting histograms
+par.save_overlaps = getparval(cfgcell,'save_overlaps',0);
 
 % plot faults
 par.plt_faults = getparval(cfgcell,'plt_faults',0);

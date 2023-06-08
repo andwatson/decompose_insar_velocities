@@ -1,5 +1,5 @@
-function [lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,frames,...
-    asc_frames_ind,desc_frames_ind,fault_trace,gnss_field,borders] = load_inputs(par,insarpar)
+function [lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,poly_mask,frames,...
+    asc_frames_ind,desc_frames_ind,fault_trace,gnss,borders] = load_inputs(par,insarpar)
 %=================================================================
 % function [] = load_inputs()
 %-----------------------------------------------------------------
@@ -8,12 +8,34 @@ function [lon,lat,dx,dy,lon_comp,lat_comp,vel,vstd,compE,compN,compU,mask,frames
 %                                                                  
 % INPUT:                                                           
 %   par:  structure containing general parameters
+%   insarpar: structure containing insar-specific parameters
 % OUTPUT:                                                          
-%   
+%   lon,lat: cell arrays containing coordinate vectors for each frame
+%   dx,dy: cell arrays containing input grid spacing for each frame
+%   lon_comp,lat_comp: cell arrays containing coordinate vectors for the
+%                       look vector component maps for each frame (issue 
+%                       with an older version of lics where the vectors
+%                       were on the wrong grid, may not be obsolete)
+%   vel: cell array containing the 2D velocity arrays for each frame
+%   vstd: cell array containing the 2D uncertainty arrays for each frame
+%   compE,compN,compU: cell arrays containing the 2D look vector component
+%                       arrays for each frame
+%   mask: cell array containing the 2D mask arrays for each frame
+%   poly_mask: structure array containing the polygons from the poly_mask
+%               shape file
+%   frames: cell array of frame name strings
+%   asc_frames_ind,desc_frames_ind: indices for the ascending and
+%                                    descending frames
+%   fault_trace: nx2 coordinate array defining fault traces for plotting
+%   gnss: structure that optionally combines both the interpolated GNSS
+%           fields and the GNSS stations
+%   borders: structure containing polygons defining country borders
 %
 % Andrew Watson     24-11-2022
 %                                                                  
 %=================================================================
+
+%% setup
 
 % number of velocity maps inputted
 nframes = length(insarpar.dir);
@@ -25,6 +47,8 @@ lon_comp = cell(size(lon)); lat_comp = cell(size(lon));
 dx = cell(size(lon)); dy = cell(size(lon));
 vel = cell(size(lon)); vstd = cell(size(lon)); mask = cell(size(lon));
 compE = cell(size(lon)); compN = cell(size(lon)); compU = cell(size(lon));
+
+%% load insar
 
 % for each velocity map
 for ii = 1:nframes
@@ -60,10 +84,17 @@ for ii = 1:nframes
     namestruct = dir([insarpar.dir{ii} '*' insarpar.id_u '*']);
     [~,~,compU{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name],'single');
     
-    % load mask
-    if par.usemask == 1
+    % load mask tifs for each vel
+    if par.use_mask == 1 || par.use_mask == 3          
         namestruct = dir([insarpar.dir{ii} '*' insarpar.id_mask '*']);
-        [~,~,mask{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name],'single');
+        [~,~,mask{ii},~,~] = read_geotiff([insarpar.dir{ii} namestruct.name],'single');        
+    end
+    
+    % load shapefile mask
+    if par.use_mask == 2 || par.use_mask == 3        
+        poly_mask = shaperead(par.poly_mask_file);
+    else
+        poly_mask = [];      
     end
     
 end
@@ -72,17 +103,85 @@ end
 asc_frames_ind = find(cellfun(@(x) strncmp('A',x(4),4), frames));
 desc_frames_ind = find(cellfun(@(x) strncmp('D',x(4),4), frames));
 
+%% load gnss
+
+% select which to load.
+% we only need the stations vels if they're used for referencing.
+% we need the field velocities if they are used for referencing or in the
+% decomp.
+
+% no referencing, and assuming N is zero
+if par.ref2gnss == 0 && par.decomp_method == 3
+    load_stations = 0; load_fields = 0;
+    
+% ref to stations, assume N is zero
+elseif par.ref2gnss == 1 && par.decomp_method == 3
+    load_stations = 1; load_fields = 0;
+    
+% ref to stations, any other decomp method
+elseif par.ref2gnss == 1 && ismember(par.decomp_method,0:2)
+    load_stations = 1; load_fields = 1;
+    
+% ref to fields, any decomp
+elseif par.ref2gnss == 2
+    load_stations = 0; load_fields = 1;
+    
+% anything else
+else
+    load_stations = 0; load_fields = 0;
+end
+
+% load neither
+if load_stations == 0 && load_fields == 0
+    disp('Loading neither GNSS stations or GNSS fields.')
+    gnss = [];
+end
+
+% load fields
+if load_fields == 1
+    
+    disp('Loading interpolated GNSS fields')
+    
+    % check extension
+    [~,~,ext] = fileparts(par.gnss_fields_file);
+    if ~strcmp(ext,'.mat')
+        error('GNSS fields requested, gnss_file should end .mat')
+    end
+
+    % GNSS file is interpolated velocities in a .mat
+    gnss = importdata(par.gnss_fields_file);
+
+    % check for uncertainties
+    if par.gnss_uncer == 1 && (~isfield(gnss,'sE') || ~isfield(gnss,'sN'))
+        error('Propagation of GNSS uncertainties requested, but GNSS mat file does not contain sE and sN')
+    end
+end
+
+% load stations
+if load_stations == 1
+    % GNSS file should be a (at least) six column text file of:
+    % lon lat vE vN sE sN (cor)
+    
+    disp('Loading GNSS station velocities')
+
+    % check extension
+    [~,~,ext] = fileparts(par.gnss_stations_file);
+    if strcmp(ext,'.mat')
+        error('GNSS stations requested, gnss_file should not end .mat')
+    end
+
+    gnss.stations = readmatrix(par.gnss_stations_file);
+end
+
+% have to load fields first so that the structures combine easily.
+
+%% load misc
+
 % fault traces
 if par.plt_faults == 1
     fault_trace = single(readmatrix(par.faults_file,'FileType','text'));
 else
     fault_trace = [];
-end
-
-% load gnss vels and check if uncertainties are present (if requested)
-load(par.gnss_file);
-if par.gnss_uncer == 1 && (~isfield(gnss_field,'sE') || ~isfield(gnss_field,'sN'))
-    error('Propagation of GNSS uncertainties requested, but GNSS mat file does not contain sE and sN')
 end
 
 % borders
