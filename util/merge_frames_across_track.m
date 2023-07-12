@@ -143,7 +143,7 @@ los_av_desc = mean(vel(:,:,tracks_desc_ind),3,'omitnan');
 lonlim = [min(x) max(x)];
 latlim = [min(y) max(y)];
 clim = [-10 10];
-load('/nfs/a285/homes/eearw/gmt/colourmaps/vik/vik.mat')
+load('/nfs/see-fs-02_users/eejdm/scripts/cpts/vik/vik.mat')
 
 % reload borders for ease
 if par.plt_borders == 1
@@ -169,8 +169,8 @@ colormap(t(2),vik)
 %% attempt a simple decomposition with a shared reference area
 
 % new reference area
-ref_xmin = 52.1528; ref_xmax = 52.6978;
-ref_ymin = 31.1667; ref_ymax = 31.7523;
+ref_xmin = 172.5700; ref_xmax = 172.6000;
+ref_ymin = -43.5700; ref_ymax = -43.5000;
 
 % get indices
 [~,ref_xmin_ind] = min(abs(x-ref_xmin));
