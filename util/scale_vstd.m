@@ -21,7 +21,7 @@ function [vstd_scaled,rms_misfit] = scale_vstd(par,x,y,vstd,frame)
 %% setup
 
 % convert to UTM
-dczone = utmzone(mean(x),mean(y));
+dczone = utmzone(mean(y),mean(x));
 utmstruct = defaultm('utm'); 
 utmstruct.zone = dczone;  
 utmstruct.geoid = wgs84Ellipsoid;
