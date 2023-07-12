@@ -121,6 +121,21 @@ if par.plt_plate_motion == 1
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
     t = tiledlayout(1,2,'TileSpacing','compact');
+    title(t,'Plate Motion')
+    
+    % plot ascending tracks
+    t(1) = nexttile; hold on
+    plt_data(x,y,plate_E,lonlim,latlim,clim,'East (mm/yr)',[],borders)
+    colormap(t(1),cpt.vik)
+    
+    % plot descending tracks
+    t(2) = nexttile; hold on
+    plt_data(x,y,plate_N,lonlim,latlim,clim,'North (mm/yr)',[],borders)
+    colormap(t(2),cpt.vik)
+    
+    f = figure();
+    f.Position([1 3 4]) = [600 1600 600];
+    t = tiledlayout(1,2,'TileSpacing','compact');
     title(t,'After plate motion correction')
     
     % plot ascending tracks
