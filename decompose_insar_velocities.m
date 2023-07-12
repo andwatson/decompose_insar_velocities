@@ -241,7 +241,7 @@ if par.ref2gnss == 1
     
 elseif par.ref2gnss == 2
     disp('Referencing InSAR to interpolated GNSS velocities')
-    vel_regrid = ref_to_gnss_fields(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
+    [vel_regrid, gnss] = ref_to_gnss_fields(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
         compE_regrid,compN_regrid,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind);
     
 end
@@ -317,7 +317,7 @@ plt_data(x_regrid,y_regrid,m_up,lonlim,latlim,clim,'Vertical (mm/yr)',fault_trac
 colormap(t(1),cpt.vik)
 
 t(2) = nexttile; hold on
-plt_data(x_regrid,y_regrid,m_east,lonlim,latlim,clim,'East (mm/yr)',fault_trace,borders)
+plt_data(x_regrid,y_regrid,m_east,lonlim,latlim,[-40 40],'East (mm/yr)',fault_trace,borders)
 colormap(t(2),cpt.vik)
 
 % North and  coverage
