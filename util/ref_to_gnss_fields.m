@@ -1,4 +1,4 @@
-function [vel, gnss_los] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind, frames)
+function [vel, gnss_los] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind,frames)
 %=================================================================
 % function ref_to_gnss()
 %-----------------------------------------------------------------
@@ -117,6 +117,10 @@ for ii = 1:nframes
             
     end
     
+    save_planes = 1
+    if save_planes == 1
+        
+    
     % for plotting
     if par.plt_ref_gnss_indv == 1
         vel_orig = vel(:,:,ii);
@@ -218,18 +222,14 @@ if par.plt_ref_gnss_los == 1
 end
 
 if par.grd_ref_gnss_los == 1
-    if par.merge_tracks_along ~= 0
-        fprintf('Nope! Will only save GNSS LOS for unmerged frames. Skipping...\n')
-    else
-        mkdir([par.out_path, 'GNSS_LOS'])
-        for ii = 1:length(frames)
-            LOS = gnss_los(:, : ,ii);
-            [y, x] = ind2sub(size(LOS), find(~isnan(LOS)));
-            ylims=[floor(min(y)/10) * 10, ceil(max(y)/10) * 10];
-            xlims=[floor(min(x)/10) * 10, ceil(max(x)/10) * 10];
-            fprintf('%.0f/%.0f Writing %s to .grd...\n', ii, length(frames), frames{ii})
-            grdwrite2(xx(1, xlims(1):xlims(2)), yy(ylims(1):ylims(2), 1), LOS(ylims(1):ylims(2),xlims(1):xlims(2)), [par.out_path 'GNSS_LOS' filesep frames{ii} '_GNSS_LOS.grd'])
-        end
+    mkdir([par.out_path, 'GNSS'])
+    for ii = 1:length(frames)
+        LOS = gnss_los(:, : ,ii);
+        [y, x] = ind2sub(size(LOS), find(~isnan(LOS)));
+        ylims=[floor(min(y)/10) * 10, ceil(max(y)/10) * 10];
+        xlims=[floor(min(x)/10) * 10, ceil(max(x)/10) * 10];
+        fprintf('%.0f/%.0f Writing %s to .grd...\n', ii, length(frames), frames{ii})
+        grdwrite2(xx(1, xlims(1):xlims(2)), yy(ylims(1):ylims(2), 1), LOS(ylims(1):ylims(2),xlims(1):xlims(2)), [par.out_path 'GNSS' filesep frames{ii} '_GNSS_LOS.grd'])
     end
 end
 

@@ -234,15 +234,21 @@ end
 % Shift InSAR velocities into the same reference frame as the GNSS
 % velocities. Method is given by par.ref2gnss. 
 
+if par.merge_tracks_along == 2
+    outdirs = tracks;
+else
+    outdirs = frames;
+end
+
 if par.ref2gnss == 1
     disp('Referencing InSAR to GNSS station velocities')
     vel_regrid = ref_to_gnss_stations(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
-        compE_regrid,compN_regrid,gnss,asc_frames_ind,desc_frames_ind);   
+        compE_regrid,compN_regrid,gnss,asc_frames_ind,desc_frames_ind,outdirs);   
     
 elseif par.ref2gnss == 2
     disp('Referencing InSAR to interpolated GNSS velocities')
     [vel_regrid, gnss] = ref_to_gnss_fields(par,cpt,xx_regrid,yy_regrid,vel_regrid,...
-        compE_regrid,compN_regrid,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind);
+        compE_regrid,compN_regrid,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind,outdirs);
     
 end
 
