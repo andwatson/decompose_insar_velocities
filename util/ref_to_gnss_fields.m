@@ -216,8 +216,7 @@ if par.plt_ref_gnss_los == 1
     plt_data(x,y,gnss_los(:,:,desc_frames_ind),lonlim,latlim,clim,'Descending (mm/yr)',[],[])
     colormap(t(2),cpt.vik)
     
-    output_gnss_los = 1;
-    if output_gnss_los == 1
+    if par.grd_ref_gnss_los == 1
         if par.merge_tracks_along ~= 0
             fprintf('Nope! Will only save GNSS LOS for unmerged frames\n')
             for ii = 1:length(frames)

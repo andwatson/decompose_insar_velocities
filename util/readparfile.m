@@ -163,6 +163,9 @@ par.plt_ref_gnss_surfaces = getparval(cfgcell,'plt_ref_gnss_surfaces',0);
 % plot gnss in los
 par.plt_ref_gnss_los = getparval(cfgcell,'plt_ref_gnss_los',0);
 
+% output gnss in los as grd
+par.grd_ref_gnss_los = getparval(cfgcell,'grd_ref_gnss_los',0);
+
 % plot ascending and descending masks
 par.plt_mask_asc_desc = getparval(cfgcell,'plt_mask_asc_desc',0);
 
