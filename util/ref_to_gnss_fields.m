@@ -220,6 +220,7 @@ end
 if par.grd_ref_gnss_los == 1
     if par.merge_tracks_along ~= 0
         fprintf('Nope! Will only save GNSS LOS for unmerged frames. Skipping...\n')
+    else
         for ii = 1:length(frames)
             LOS = gnss_los(:, : ,ii);
             [y, x] = ind2sub(size(LOS), find(~isnan(LOS)));
