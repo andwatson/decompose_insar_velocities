@@ -221,13 +221,14 @@ if par.grd_ref_gnss_los == 1
     if par.merge_tracks_along ~= 0
         fprintf('Nope! Will only save GNSS LOS for unmerged frames. Skipping...\n')
     else
+        mkdir([par.out_path, 'GNSS_LOS'])
         for ii = 1:length(frames)
             LOS = gnss_los(:, : ,ii);
             [y, x] = ind2sub(size(LOS), find(~isnan(LOS)));
-            ylims=[floor(min(y)/10) * 10, ceil(min(y)/10) * 10];
-            xlims=[floor(min(x)/10) * 10, ceil(min(x)/10) * 10];
-            fprintf('%.0f/%.0f Writing %s to .grd...\n', ii, length(frames), frames(ii))
-            grdwrite2(x(xlims(1):xlims(2)), y(ylims(1), ylims(2)), LOS(ylims(1):ylims(2),xlims(1):xlims(2)), [par.out_path frames(ii) '_GNSS_LOS.grd'])
+            ylims=[floor(min(y)/10) * 10, ceil(max(y)/10) * 10];
+            xlims=[floor(min(x)/10) * 10, ceil(max(x)/10) * 10];
+            fprintf('%.0f/%.0f Writing %s to .grd...\n', ii, length(frames), frames{ii})
+            grdwrite2(xx(1, xlims(1):xlims(2)), yy(ylims(1):ylims(2), 1), LOS(ylims(1):ylims(2),xlims(1):xlims(2)), [par.out_path 'GNSS_LOS' filesep frames{ii} '_GNSS_LOS.grd'])
         end
     end
 end
