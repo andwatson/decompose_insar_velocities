@@ -1,4 +1,4 @@
-function [vel, gnss_los] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind)
+function [vel, gnss_los] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind, frames)
 %=================================================================
 % function ref_to_gnss()
 %-----------------------------------------------------------------
@@ -11,8 +11,8 @@ function [vel, gnss_los] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss
 %   - calculate residual between InSAR and GNSS
 %   - either fit a polynomial to the residual, or apply a filter
 %   - subtract this smoothed difference from the InSAR
-%                                                                  
-% INPUT:                                                           
+%
+% INPUT:
 %   par: parameter structure from readparfile.
 %   cpt: structure containing colour palettes
 %   x, y: vectors of longitude and latitude
@@ -21,13 +21,13 @@ function [vel, gnss_los] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss
 %   vstd: regridded velocity uncertainties
 %   asc_frames_ind, desc_frames_ind: indices for ascending and descending
 %       frames/tracks
-% OUTPUT:    
+% OUTPUT:
 %   vel: velocities in GNSS reference system
 % gnss_los: GNSS velocities in LOS for each frame
-%   
-%   
+%
+%
 % Andrew Watson     06-06-2022
-% Jack McGrath      05-07-2023 Output GNSS LOS                                                                 
+% Jack McGrath      05-07-2023 Output GNSS LOS
 %=================================================================
 
 % pre-allocate
@@ -39,16 +39,16 @@ gnss_los = zeros([size(xx) nframes]);
 x = xx(1,:); y = yy(:,1);
 
 for ii = 1:nframes
-
+    
     % skip loop if vel is empty (likely because of masking)
     if all(isnan(vel(:,:,ii)),'all')
         disp(['Layer ' num2str(ii) ' of vel is empty after masking, skipping referencing'])
         continue
     end
-
+    
     % convert gnss fields to los
     gnss_los(:,:,ii) = (gnss_E.*compE(:,:,ii)) + (gnss_N.*compN(:,:,ii));
-
+    
     % calculate residual
     vel_tmp = vel(:,:,ii);
     
@@ -60,7 +60,7 @@ for ii = 1:nframes
     vel_mask = vel_deramp>10 | vel_deramp<-10;
     
     vel_tmp(vel_mask) = nan;
-
+    
     gnss_resid = vel_tmp - gnss_los(:,:,ii);
     
     % method switch
@@ -71,13 +71,13 @@ for ii = 1:nframes
             gnss_xx = xx(~isnan(gnss_resid));
             gnss_yy = yy(~isnan(gnss_resid));
             gnss_resid = gnss_resid(~isnan(gnss_resid));
-    
+            
             % centre coords
             midx = (max(gnss_xx) + min(gnss_xx))/2;
             midy = (max(gnss_yy) + min(gnss_yy))/2;
             gnss_xx = gnss_xx - midx ;gnss_yy = gnss_yy - midy;
             all_xx = xx - midx; all_yy = yy - midy;
-
+            
             % check that an order has been set
             if isempty(par.ref_poly_order)
                 error('Must set par.ref_poly_order if using poly for referencing')
@@ -109,7 +109,7 @@ for ii = 1:nframes
             gnss_resid_filtered = ndnanfilter(gnss_resid,'rectwin',windsize);
             
             % reapply nans
-%             gnss_resid_filtered(isnan(gnss_resid)) = nan;
+            %             gnss_resid_filtered(isnan(gnss_resid)) = nan;
             gnss_resid_filtered(isnan(vel(:,:,ii))) = nan;
             
             % store
@@ -133,7 +133,7 @@ for ii = 1:nframes
     
     % optional plotting
     if par.plt_ref_gnss_indv == 1
-
+        
         % limits
         clim = [-40 40];
         x = xx(1,:); y = yy(:,1);
@@ -143,19 +143,19 @@ for ii = 1:nframes
         f = figure();
         f.Position([1 3 4]) = [600 1600 600];
         tiledlayout(1,3,'TileSpacing','compact');
-
+        
         nexttile; hold on
         imagesc(x,y,vel_orig,'AlphaData',~isnan(vel_orig)); axis xy
         xlim(lonlim); ylim(latlim);
         colorbar; colormap(cpt.vik); caxis(clim)
         title('Original InSAR vel')
-
+        
         nexttile; hold on
         imagesc(x,y,gnss_resid_plane(:,:,ii),'AlphaData',~isnan(gnss_resid_plane(:,:,ii))); axis xy
         xlim(lonlim); ylim(latlim);
         colorbar; colormap(cpt.vik); caxis(clim)
         title('Referencing residual')
-
+        
         nexttile; hold on
         imagesc(x,y,vel(:,:,ii),'AlphaData',~isnan(vel(:,:,ii))); axis xy
         xlim(lonlim); ylim(latlim);
@@ -166,11 +166,11 @@ for ii = 1:nframes
     
     % report progress
     disp([num2str(ii) '/' num2str(nframes) ' complete'])
-
+    
 end
 
 % Fudge for the event that your ENU comps aren't cropped at the coasts
-gnss_los(find(isnan(vel))) = nan;
+gnss_los(isnan(vel)) = nan;
 
 
 if par.plt_ref_gnss_surfaces == 1
@@ -178,42 +178,57 @@ if par.plt_ref_gnss_surfaces == 1
     lonlim = [min(x) max(x)];
     latlim = [min(y) max(y)];
     clim = [-40 40];
-
+    
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
     t = tiledlayout(1,2,'TileSpacing','compact');
     title(t,'Referencing surfaces')
-
+    
     % ascending tracks
     t(1) = nexttile; hold on
     plt_data(x,y,gnss_resid_plane(:,:,asc_frames_ind),lonlim,latlim,clim,'Ascending (mm/yr)',[],[])
     colormap(t(1),cpt.vik)
-
+    
     % descending tracks
     t(2) = nexttile; hold on
     plt_data(x,y,gnss_resid_plane(:,:,desc_frames_ind),lonlim,latlim,clim,'Descending (mm/yr)',[],[])
     colormap(t(2),cpt.vik)
 end
-   
+
 if par.plt_ref_gnss_los == 1
     % plot referencing functions
     lonlim = [min(x) max(x)];
     latlim = [min(y) max(y)];
     clim = [-40 40];
-
+    
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
     t = tiledlayout(1,2,'TileSpacing','compact');
     title(t,'GNSS LOS')
-
+    
     % ascending tracks
     t(1) = nexttile; hold on
     plt_data(x,y,gnss_los(:,:,asc_frames_ind),lonlim,latlim,clim,'Ascending (mm/yr)',[],[])
     colormap(t(1),cpt.vik)
-
+    
     % descending tracks
     t(2) = nexttile; hold on
     plt_data(x,y,gnss_los(:,:,desc_frames_ind),lonlim,latlim,clim,'Descending (mm/yr)',[],[])
     colormap(t(2),cpt.vik)
-end
+    
+    output_gnss_los = 1;
+    if output_gnss_los == 1
+        if par.merge_tracks_along ~= 0
+            fprintf('Nope! Will only save GNSS LOS for unmerged frames\n')
+            for ii = 1:length(frames)
+                LOS = gnss_los(:, : ,ii);
+                [y, x] = ind2sub(size(LOS), find(~isnan(LOS)));
+                ylims=[floor(min(y)/10) * 10, ceil(min(y)/10) * 10];
+                xlims=[floor(min(x)/10) * 10, ceil(min(x)/10) * 10];
+                fprintf('%.0f/%.0f Writing %s to .grd...\n', ii, length(frames), frames(ii))
+                grdwrite2(x(xlims(1):xlims(2)), y(ylims(1), ylims(2)), LOS(ylims(1):ylims(2),xlims(1):xlims(2)), [par.out_path frames(ii) '_GNSS_LOS.grd'])
+            end
+        end
+    end
+    
 end
