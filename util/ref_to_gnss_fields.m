@@ -1,4 +1,4 @@
-function [vel, gnss_los] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind,frames)
+function [vel, gnss_los] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss_E,gnss_N,asc_frames_ind,desc_frames_ind,insar_id)
 %=================================================================
 % function ref_to_gnss()
 %-----------------------------------------------------------------
@@ -28,102 +28,118 @@ function [vel, gnss_los] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss
 %
 % Andrew Watson     06-06-2022
 % Jack McGrath      05-07-2023 Output GNSS LOS
+% Jack McGrath      26-07-2023 Store and Load Resid Planes
 %=================================================================
-
-% pre-allocate
 nframes = size(vel,3);
-gnss_resid_plane = zeros([size(xx) nframes]);
-gnss_los = zeros([size(xx) nframes]);
+
+if par.use_stored_ref_planes == 1
+    if par.merge_tracks_along == 2
+        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_residuals_tracks.mat'];
+    else
+        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_residuals_frames.mat'];
+    end
+    if isfile(residfile)
+        resids = load(residfile);
+        
+        if resids.insar_id ~= insar_id
+            fprintf('Loaded insar id does not match what you are trying to do now. Exiting....\n')
+            return
+        else
+            fprintf('\tusing loaded residual planes....\n')
+        end
+        gnss_resid_plane = resids.gnss_resid_plane;
+        gnss_los = resids.gnss_los
+    else
+        % pre-allocate
+        gnss_resid_plane = zeros([size(xx) nframes]);
+        gnss_los = zeros([size(xx) nframes]);
+    end
+end
 
 % coords
 x = xx(1,:); y = yy(:,1);
 
 for ii = 1:nframes
-    
     % skip loop if vel is empty (likely because of masking)
     if all(isnan(vel(:,:,ii)),'all')
         disp(['Layer ' num2str(ii) ' of vel is empty after masking, skipping referencing'])
         continue
     end
-    
-    % convert gnss fields to los
-    gnss_los(:,:,ii) = (gnss_E.*compE(:,:,ii)) + (gnss_N.*compN(:,:,ii));
-    
-    % calculate residual
-    vel_tmp = vel(:,:,ii);
-    
-    % mask after deramping (deramp isn't carried forward)
-    % use a hardcoded 10 mm/yr limit to remove large signals (mainly
-    % subsidence and seismic)
-    vel_deramp = deramp(x,y,vel_tmp);
-    vel_deramp = vel_deramp - mean(vel_deramp(:),'omitnan');
-    vel_mask = vel_deramp>10 | vel_deramp<-10;
-    
-    vel_tmp(vel_mask) = nan;
-    
-    gnss_resid = vel_tmp - gnss_los(:,:,ii);
-    
-    % method switch
-    switch par.ref_type
-        case 1 % polynomial surface
-            
-            % remove nans
-            gnss_xx = xx(~isnan(gnss_resid));
-            gnss_yy = yy(~isnan(gnss_resid));
-            gnss_resid = gnss_resid(~isnan(gnss_resid));
-            
-            % centre coords
-            midx = (max(gnss_xx) + min(gnss_xx))/2;
-            midy = (max(gnss_yy) + min(gnss_yy))/2;
-            gnss_xx = gnss_xx - midx ;gnss_yy = gnss_yy - midy;
-            all_xx = xx - midx; all_yy = yy - midy;
-            
-            % check that an order has been set
-            if isempty(par.ref_poly_order)
-                error('Must set par.ref_poly_order if using poly for referencing')
-            end
-            
-            % fit polynomial
-            if par.ref_poly_order == 1 % 1st order
-                G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy];
-                m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
-                gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy;
-                
-            elseif par.ref_poly_order == 2 % 2nd order
-                G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy gnss_xx.*gnss_yy ...
-                    gnss_xx.^2 gnss_yy.^2];
-                m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
-                gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy ...
-                    + m_resid(4).*all_xx.*all_yy + m_resid(5).*all_xx.^2 + m_resid(6).*all_yy.^2;
-            end
-            
-        case 2 % filtering
-            
-            % make sure filter size is odd
-            if mod(par.ref_filter_window_size,2) ~= 1
-                error('Filter window size must be an odd number')
-            end
-            
-            % filter gnss residual
-            windsize = [par.ref_filter_window_size par.ref_filter_window_size];
-            gnss_resid_filtered = ndnanfilter(gnss_resid,'rectwin',windsize);
-            
-            % reapply nans
-            %             gnss_resid_filtered(isnan(gnss_resid)) = nan;
-            gnss_resid_filtered(isnan(vel(:,:,ii))) = nan;
-            
-            % store
-            gnss_resid_plane(:,:,ii) = gnss_resid_filtered;
-            
-    end
-    
-    save_planes = 1
-    if save_planes == 1
+    if par.use_stored_ref_planes == 0
+        % convert gnss fields to los
+        gnss_los(:,:,ii) = (gnss_E.*compE(:,:,ii)) + (gnss_N.*compN(:,:,ii));
         
-    
-    % for plotting
-    if par.plt_ref_gnss_indv == 1
-        vel_orig = vel(:,:,ii);
+        % calculate residual
+        vel_tmp = vel(:,:,ii);
+        
+        % mask after deramping (deramp isn't carried forward)
+        % use a hardcoded 10 mm/yr limit to remove large signals (mainly
+        % subsidence and seismic)
+        vel_deramp = deramp(x,y,vel_tmp);
+        vel_deramp = vel_deramp - mean(vel_deramp(:),'omitnan');
+        vel_mask = vel_deramp>10 | vel_deramp<-10;
+        
+        vel_tmp(vel_mask) = nan;
+        
+        gnss_resid = vel_tmp - gnss_los(:,:,ii);
+        
+        % method switch
+        switch par.ref_type
+            case 1 % polynomial surface
+                
+                % remove nans
+                gnss_xx = xx(~isnan(gnss_resid));
+                gnss_yy = yy(~isnan(gnss_resid));
+                gnss_resid = gnss_resid(~isnan(gnss_resid));
+                
+                % centre coords
+                midx = (max(gnss_xx) + min(gnss_xx))/2;
+                midy = (max(gnss_yy) + min(gnss_yy))/2;
+                gnss_xx = gnss_xx - midx ;gnss_yy = gnss_yy - midy;
+                all_xx = xx - midx; all_yy = yy - midy;
+                
+                % check that an order has been set
+                if isempty(par.ref_poly_order)
+                    error('Must set par.ref_poly_order if using poly for referencing')
+                end
+                
+                % fit polynomial
+                if par.ref_poly_order == 1 % 1st order
+                    G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy];
+                    m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
+                    gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy;
+                    
+                elseif par.ref_poly_order == 2 % 2nd order
+                    G_resid = [ones(length(gnss_xx),1) gnss_xx gnss_yy gnss_xx.*gnss_yy ...
+                        gnss_xx.^2 gnss_yy.^2];
+                    m_resid = (G_resid'*G_resid)^-1*G_resid'*gnss_resid;
+                    gnss_resid_plane(:,:,ii) = m_resid(1) + m_resid(2).*all_xx + m_resid(3).*all_yy ...
+                        + m_resid(4).*all_xx.*all_yy + m_resid(5).*all_xx.^2 + m_resid(6).*all_yy.^2;
+                end
+                
+            case 2 % filtering
+                
+                % make sure filter size is odd
+                if mod(par.ref_filter_window_size,2) ~= 1
+                    error('Filter window size must be an odd number')
+                end
+                
+                % filter gnss residual
+                windsize = [par.ref_filter_window_size par.ref_filter_window_size];
+                gnss_resid_filtered = ndnanfilter(gnss_resid,'rectwin',windsize);
+                
+                % reapply nans
+                %             gnss_resid_filtered(isnan(gnss_resid)) = nan;
+                gnss_resid_filtered(isnan(vel(:,:,ii))) = nan;
+                
+                % store
+                gnss_resid_plane(:,:,ii) = gnss_resid_filtered;
+        end
+        
+        % for plotting
+        if par.plt_ref_gnss_indv == 1
+            vel_orig = vel(:,:,ii);
+        end
     end
     
     % mask resid with vel (just for plotting)
@@ -133,7 +149,6 @@ for ii = 1:nframes
     
     % remove from insar
     vel(:,:,ii) = vel(:,:,ii) - gnss_resid_plane(:,:,ii);
-    
     
     % optional plotting
     if par.plt_ref_gnss_indv == 1
@@ -223,14 +238,26 @@ end
 
 if par.grd_ref_gnss_los == 1
     mkdir([par.out_path, 'GNSS'])
-    for ii = 1:length(frames)
+    for ii = 1:length(insar_id)
         LOS = gnss_los(:, : ,ii);
         [y, x] = ind2sub(size(LOS), find(~isnan(LOS)));
         ylims=[floor(min(y)/10) * 10, ceil(max(y)/10) * 10];
         xlims=[floor(min(x)/10) * 10, ceil(max(x)/10) * 10];
-        fprintf('%.0f/%.0f Writing %s to .grd...\n', ii, length(frames), frames{ii})
-        grdwrite2(xx(1, xlims(1):xlims(2)), yy(ylims(1):ylims(2), 1), LOS(ylims(1):ylims(2),xlims(1):xlims(2)), [par.out_path 'GNSS' filesep frames{ii} '_GNSS_LOS.grd'])
+        fprintf('%.0f/%.0f Writing %s to .grd...\n', ii, length(insar_id), insar_id{ii})
+        grdwrite2(xx(1, xlims(1):xlims(2)), yy(ylims(1):ylims(2), 1), LOS(ylims(1):ylims(2),xlims(1):xlims(2)), [par.out_path 'GNSS' filesep insar_id{ii} '_GNSS_LOS.grd'])
     end
+    grdwrite2(xx(1, :), yy(:, 1), gnss_E(:,:), [par.out_path 'GNSS' filesep 'GNSS_E.grd'])
+    grdwrite2(xx(1, :), yy(:, 1), gnss_N(:,:), [par.out_path 'GNSS' filesep 'GNSS_N.grd'])
 end
 
+if par.store_ref_planes == 1
+    mkdir([par.out_path, 'GNSS'])
+    if par.merge_tracks_along == 2
+        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_residuals_tracks.mat'];
+    else
+        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_residuals_frames.mat'];
+    end
+    ref_type = par.ref_type;
+    save(residfile, 'gnss_los', 'gnss_resid_plane', 'insar_id', 'ref_type')
+end
 end

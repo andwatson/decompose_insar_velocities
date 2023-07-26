@@ -82,6 +82,8 @@ par.ref_type = getparval(cfgcell,'ref_type',[]);
 par.ref_poly_order = getparval(cfgcell,'ref_poly_order',[]);
 par.ref_filter_window_size = getparval(cfgcell,'ref_filter_window_size',[]);
 par.ref_station_radius = getparval(cfgcell,'ref_station_radius',0);
+par.store_ref_planes = getparval(cfgcell,'store_ref_planes',0);
+par.use_stored_ref_planes = getparval(cfgcell,'use_stored_ref_planes',0);
 
 % use mask
 par.use_mask = getparval(cfgcell,'use_mask',0);
