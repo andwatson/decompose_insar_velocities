@@ -207,7 +207,7 @@ if plt_new_masked_vels == 1
     % set plotting parameters
     lonlim = [min(cellfun(@min,lon)) max(cellfun(@max,lon))];
     latlim = [min(cellfun(@min,lat)) max(cellfun(@max,lat))];
-    clim = [-10 10];
+    clim = [par.plt_cmin par.plt_cmax];
 
     % temp apply mask
     vel_tmp = cell(1,nframes);

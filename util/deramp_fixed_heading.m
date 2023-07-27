@@ -54,7 +54,7 @@ if plt == 1
     % set plotting parameters
     lonlim = [min(x) max(x)];
     latlim = [min(y) max(y)];
-    clim = [-10 10];
+    clim = [par.plt_cmin par.plt_cmax];
     load('/nfs/a285/homes/eearw/gmt/colourmaps/vik/vik.mat')
 
     f = figure();

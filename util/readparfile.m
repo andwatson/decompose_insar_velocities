@@ -132,6 +132,10 @@ par.save_frames = getparval(cfgcell,'save_frames',0);
 % save overlaps as text files for plotting histograms
 par.save_overlaps = getparval(cfgcell,'save_overlaps',0);
 
+% climits
+par.plt_cmin = getparval(cfgcell,'plt_cmin',-10)
+par.plt_cmax = getparval(cfgcell,'plt_cmax',10)
+
 % plot faults
 par.plt_faults = getparval(cfgcell,'plt_faults',0);
 

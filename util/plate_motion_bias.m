@@ -69,7 +69,7 @@ for ii = 1:size(vel,3)
     if par.plt_plate_motion_indv == 1
 
         % limits
-        clim = [-10 10];
+        clim = [par.plt_cmin par.plt_cmax];
         [~,x_ind,y_ind] = crop_nans(vel(:,:,ii),x,y);
         lonlim = x([x_ind(1) x_ind(end)]); latlim = y([y_ind(1) y_ind(end)]);
         
@@ -109,7 +109,7 @@ if par.plt_plate_motion == 1
     % set plotting parameters
     lonlim = [min(x) max(x)];
     latlim = [min(y) max(y)];
-    clim = [-10 10];
+    clim = [par.plt_cmin par.plt_cmax];
     
     % reload borders for ease
     if par.plt_borders == 1

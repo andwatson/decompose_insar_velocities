@@ -310,7 +310,7 @@ disp('Plotting decomposed velocities')
 
 lonlim = [min(x_regrid) max(x_regrid)];
 latlim = [min(y_regrid) max(y_regrid)];
-clim = [-10 10];
+clim = [par.plt_cmin par.plt_cmax];
 
 % East and vertical
 f = figure();
@@ -323,7 +323,7 @@ plt_data(x_regrid,y_regrid,m_up,lonlim,latlim,clim,'Vertical (mm/yr)',fault_trac
 colormap(t(1),cpt.vik)
 
 t(2) = nexttile; hold on
-plt_data(x_regrid,y_regrid,m_east,lonlim,latlim,[-40 40],'East (mm/yr)',fault_trace,borders)
+plt_data(x_regrid,y_regrid,m_east,lonlim,latlim,clim,'East (mm/yr)',fault_trace,borders)
 colormap(t(2),cpt.vik)
 
 % North and  coverage
@@ -438,7 +438,7 @@ end
 
 % save frames / tracks
 if par.save_frames == 1
-    
+    -40 40
     % toggle between tracks and frames depending on if the merge has
     % happened
     if par.merge_tracks_along == 2
