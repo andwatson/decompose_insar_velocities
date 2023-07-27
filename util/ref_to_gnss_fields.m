@@ -88,7 +88,7 @@ for ii = 1:nframes
         % subsidence and seismic)
         vel_deramp = deramp(x,y,vel_tmp);
         vel_deramp = vel_deramp - mean(vel_deramp(:),'omitnan');
-        vel_mask = vel_deramp>10 | vel_deramp<-10;
+        vel_mask = vel_deramp > par.refmask_max | vel_deramp < par.refmask_min;
         
         vel_tmp(vel_mask) = nan;
         
