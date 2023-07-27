@@ -438,7 +438,6 @@ end
 
 % save frames / tracks
 if par.save_frames == 1
-    -40 40
     % toggle between tracks and frames depending on if the merge has
     % happened
     if par.merge_tracks_along == 2
