@@ -142,9 +142,9 @@ m_up = m_UN.*UN2U - gnss_N.*N2U;
 
 % same for the uncertainty
 if ~isempty(gnss_sN)
-    UN2U_var = (1 - sind(inc).^2 .* cosd(az).^2) ./ cosd(inc);
+    UN2U_var = (1 - sind(inc).^2 .* cosd(az).^2) ./ cosd(inc).^2;
     N2U_var = ((sind(az).^2).*(sind(inc).^2)) ./ (cosd(inc).^2);
-    var_up = sqrt((var_UN.^2 .* UN2U_var) + (gnss_sN .* N2U_var));
+    var_up = sqrt((var_UN.^2 .* UN2U_var) + ((gnss_sN.^2) .* N2U_var));
 else
     var_up = ones(size(m_up));
 end
