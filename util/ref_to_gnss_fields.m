@@ -248,7 +248,9 @@ if par.plt_ref_gnss_los == 1
 end
 
 if par.grd_ref_gnss_los == 1
-    mkdir([par.out_path, 'GNSS'])
+    if ~isfolder([par.out_path, 'GNSS'])
+        mkdir([par.out_path, 'GNSS'])
+    end
     for ii = 1:length(insar_id)
         LOS = gnss_los(:, : ,ii);
         [y, x] = ind2sub(size(LOS), find(~isnan(LOS)));
@@ -262,7 +264,9 @@ if par.grd_ref_gnss_los == 1
 end
 
 if ~ismissing(par.store_ref_planes)
-    mkdir([par.out_path, 'GNSS'])
+    if ~isfolder([par.out_path, 'GNSS'])
+        mkdir([par.out_path, 'GNSS'])
+    end
     if par.merge_tracks_along == 2
         residfile = [par.out_path, 'GNSS', filesep, 'GNSS_track_resid', par.store_ref_planes, '.mat'];
     else
