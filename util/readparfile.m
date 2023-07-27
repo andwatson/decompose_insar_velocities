@@ -98,6 +98,10 @@ par.merge_tracks_along_func = getparval(cfgcell,'merge_tracks_along_func',0);
 
 % merge across-track
 par.merge_tracks_across = getparval(cfgcell,'merge_tracks_across',0);
+par.ref_xmin = getparval(cfgcell,'ref_xmin',0)
+par.ref_xmax = getparval(cfgcell,'ref_xmax',0)
+par.ref_ymin = getparval(cfgcell,'ref_ymin',0)
+par.ref_ymax = getparval(cfgcell,'ref_ymax',0)
 
 % reference frame bias
 par.plate_motion = getparval(cfgcell,'plate_motion',0);

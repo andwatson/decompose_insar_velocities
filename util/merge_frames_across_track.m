@@ -143,7 +143,7 @@ los_av_desc = mean(vel(:,:,tracks_desc_ind),3,'omitnan');
 lonlim = [min(x) max(x)];
 latlim = [min(y) max(y)];
 clim = [par.plt_cmin par.plt_cmax];
-load('/nfs/see-fs-02_users/eejdm/scripts/cpts/vik/vik.mat')
+load('vik.mat')
 
 % reload borders for ease
 if par.plt_borders == 1
@@ -169,8 +169,33 @@ colormap(t(2),vik)
 %% attempt a simple decomposition with a shared reference area
 
 % new reference area
-ref_xmin = 172.5700; ref_xmax = 172.6000;
-ref_ymin = -43.5700; ref_ymax = -43.5000;
+if par.ref_xmin == 0;
+    ref_xmin = min(x(:));
+    fprintf('Invalid ref_xmin. Setting to %.2f\n', ref_xmin)
+else
+    ref_xmin = par.ref_xmin;
+end
+
+if par.ref_xmax == 0;
+    ref_xmax = max(x(:));
+    fprintf('Invalid ref_xmax. Setting to %.2f\n', ref_xmax)
+else
+    ref_xmax = par.ref_xmax;
+end
+
+if par.ref_ymin == 0;
+    ref_ymin = min(y(:));
+    fprintf('Invalid ref_ymin. Setting to %.2f\n', ref_ymin)
+else
+    ref_ymin = par.ref_ymin;
+end
+
+if par.ref_ymax == 0;
+    ref_ymax = max(y(:));
+    fprintf('Invalid ref_ymax. Setting to %.2f\n', ref_ymax)
+else
+    ref_ymax = par.ref_ymax;
+end
 
 % get indices
 [~,ref_xmin_ind] = min(abs(x-ref_xmin));

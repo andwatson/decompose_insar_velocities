@@ -239,7 +239,7 @@ for ii = 1:length(unique_tracks)
             imagesc(x,y,vel(:,:,track_ind(kk)),'AlphaData',~isnan(vel(:,:,track_ind(kk))))
             xlim([x(col_ind(1)) x(col_ind(end))])
             ylim([y(row_ind(1)) y(row_ind(end))])
-            caxis([-40 40])
+            caxis([par.plt_cmin par.plt_cmax])
             colorbar
             axis xy
         end
@@ -251,7 +251,7 @@ for ii = 1:length(unique_tracks)
         imagesc(x,y,track_vel(:,:,ii),'AlphaData',~isnan(track_vel(:,:,ii)));
         xlim([x(col_ind(1)) x(col_ind(end))])
         ylim([y(row_ind(1)) y(row_ind(end))])
-        caxis([-40 40])
+        caxis([par.plt_cmin par.plt_cmax])
         colorbar
         axis xy
         

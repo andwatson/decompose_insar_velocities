@@ -79,8 +79,8 @@ end
     asc_frames_ind,desc_frames_ind,fault_trace,gnss,borders] = load_inputs(par,insarpar);
 
 % colour palettes  (https://www.fabiocrameri.ch/colourmaps/)
-vik = importdata('plotting/cpt/vik.mat');
-batlow = importdata('plotting/cpt/batlow.mat');
+vik = load('vik.mat');
+batlow = load('batlow.mat');
 cpt.vik = vik; cpt.batlow = batlow; 
 clear vik batlow
 
@@ -91,7 +91,7 @@ if par.plt_input_vels == 1
     disp('Plotting preview of input velocities')
     
     plt_asc_desc_cells(par,lon,lat,vel,mask,asc_frames_ind,...
-        desc_frames_ind,cpt.vik,[-10 10],borders,'Input velocities')
+        desc_frames_ind,cpt.vik,[par.plt_cmin par.plt_cmax],borders,'Input velocities')
     
 end
 
@@ -459,7 +459,9 @@ if par.save_frames == 1
     for ii = 1:nframes
         
         % create frame directory
-        mkdir([par.out_path outdirs{ii}])
+        if ~isfolder([par.out_path outdirs{ii}])
+            mkdir([par.out_path outdirs{ii}])
+        end
 
         % crop to minimise file size
         [~,x_ind,y_ind,x_crop,y_crop] = crop_nans(vel_regrid(:,:,ii),x_regrid,y_regrid);

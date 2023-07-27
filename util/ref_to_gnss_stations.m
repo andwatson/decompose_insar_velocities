@@ -218,7 +218,9 @@ if par.plt_ref_gnss_los == 1
 end
 
 if par.grd_ref_gnss_los == 1
-    mkdir([par.out_path, 'GNSS'])
+    if ~isfolder([par.out_path, 'GNSS'])
+        mkdir([par.out_path, 'GNSS'])
+    end
     for ii = 1:length(frames)
         LOS = gnss_los(:, : ,ii);
         [y, x] = ind2sub(size(LOS), find(~isnan(LOS)));
