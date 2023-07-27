@@ -32,28 +32,39 @@ function [vel, gnss_los] = ref_to_gnss_fields(par,cpt,xx,yy,vel,compE,compN,gnss
 %=================================================================
 nframes = size(vel,3);
 
-if par.use_stored_ref_planes == 1
+if ~ismissing(par.use_stored_ref_planes)
     if par.merge_tracks_along == 2
-        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_residuals_tracks.mat'];
+        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_track_resid', par.use_stored_ref_planes, '.mat'];
     else
-        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_residuals_frames.mat'];
+        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_frame_resid', par.use_stored_ref_planes, '.mat'];
     end
     if isfile(residfile)
+        fprintf('Loading GNSS Resid file %s\n', residfile)
         resids = load(residfile);
         
-        if resids.insar_id ~= insar_id
-            fprintf('Loaded insar id does not match what you are trying to do now. Exiting....\n')
-            return
+        % Check that everything matches
+        if length(resids.insar_id) ~= length(insar_id)
+            warning('Different number of InSAR IDs in loaded and processing datasets. Calculating reference from scratch\n')
+            par.use_stored_ref_planes = missing;
+        elseif sum(ismember(resids.insar_id, insar_id)) ~= length(resids.insar_id)
+            warning('Different InSAR IDs in loaded and processing datasets. Calculating reference from scratch\n')
+            par.use_stored_ref_planes = missing;
         else
-            fprintf('\tusing loaded residual planes....\n')
+            % InSAR IDs are the same, ensure that they are in the same order
+            [~,~,sort_order] = intersect(resids.insar_id,insar_id,'stable')
         end
-        gnss_resid_plane = resids.gnss_resid_plane;
-        gnss_los = resids.gnss_los
+        gnss_resid_plane = resids.gnss_resid_plane(:, :, sort_order);
+        gnss_los = resids.gnss_los(:, :, sort_order);
     else
-        % pre-allocate
+        fprintf('Residual file does not exist. Calculating reference from scratch\n')
+        par.use_stored_ref_planes = missing;
+    end
+end
+
+if ismissing(par.use_stored_ref_planes)
+    % pre-allocate
         gnss_resid_plane = zeros([size(xx) nframes]);
         gnss_los = zeros([size(xx) nframes]);
-    end
 end
 
 % coords
@@ -65,7 +76,7 @@ for ii = 1:nframes
         disp(['Layer ' num2str(ii) ' of vel is empty after masking, skipping referencing'])
         continue
     end
-    if par.use_stored_ref_planes == 0
+    if ismissing(par.use_stored_ref_planes)
         % convert gnss fields to los
         gnss_los(:,:,ii) = (gnss_E.*compE(:,:,ii)) + (gnss_N.*compN(:,:,ii));
         
@@ -243,20 +254,23 @@ if par.grd_ref_gnss_los == 1
         [y, x] = ind2sub(size(LOS), find(~isnan(LOS)));
         ylims=[floor(min(y)/10) * 10, ceil(max(y)/10) * 10];
         xlims=[floor(min(x)/10) * 10, ceil(max(x)/10) * 10];
-        fprintf('%.0f/%.0f Writing %s to .grd...\n', ii, length(insar_id), insar_id{ii})
+        fprintf('%.0f/%.0f Writing GNSS LOS for %s to .grd...\n', ii, length(insar_id), insar_id{ii})
         grdwrite2(xx(1, xlims(1):xlims(2)), yy(ylims(1):ylims(2), 1), LOS(ylims(1):ylims(2),xlims(1):xlims(2)), [par.out_path 'GNSS' filesep insar_id{ii} '_GNSS_LOS.grd'])
     end
     grdwrite2(xx(1, :), yy(:, 1), gnss_E(:,:), [par.out_path 'GNSS' filesep 'GNSS_E.grd'])
     grdwrite2(xx(1, :), yy(:, 1), gnss_N(:,:), [par.out_path 'GNSS' filesep 'GNSS_N.grd'])
 end
 
-if par.store_ref_planes == 1
+if ~ismissing(par.store_ref_planes)
     mkdir([par.out_path, 'GNSS'])
     if par.merge_tracks_along == 2
-        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_residuals_tracks.mat'];
+        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_track_resid', par.store_ref_planes, '.mat'];
     else
-        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_residuals_frames.mat'];
+        residfile = [par.out_path, 'GNSS', filesep, 'GNSS_frame_resid', par.store_ref_planes, '.mat'];
     end
+    fprintf('Saved GNSS residuals to %s\n', residfile)
+    % TO DO: Crop reference frames to InSAR coverage and save as cell array
+    % to save space, or allow a list of the InSAR you need to save + apply to
     ref_type = par.ref_type;
     save(residfile, 'gnss_los', 'gnss_resid_plane', 'insar_id', 'ref_type')
 end
