@@ -296,7 +296,7 @@ if par.plt_merge_tracks == 1 && par.merge_tracks_along == 2
     % set plotting parameters
     lonlim = [min(x) max(x)];
     latlim = [min(y) max(y)];
-    clim = [-40 40];
+    clim = [par.plt_cmin par.plt_cmax];
     
     % reload borders for ease
     if par.plt_borders == 1

@@ -135,7 +135,7 @@ for ii = 1:nframes
     if par.plt_ref_gnss_indv == 1
 
         % limits
-        clim = [-10 10];
+        clim = [par.plt_cmin par.plt_cmax];
         x = xx(1,:); y = yy(:,1);
         [~,x_ind,y_ind] = crop_nans(vel(:,:,ii),x,y);
         lonlim = x([x_ind(1) x_ind(end)]); latlim = y([y_ind(1) y_ind(end)]);
@@ -177,7 +177,7 @@ if par.plt_ref_gnss_surfaces == 1
     x = xx(1,:); y = yy(:,1);
     lonlim = [min(x) max(x)];
     latlim = [min(y) max(y)];
-    clim = [-10 10];
+    clim = [par.plt_cmin par.plt_cmax];
 
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];
@@ -199,7 +199,7 @@ if par.plt_ref_gnss_los == 1
     % plot referencing functions
     lonlim = [min(x) max(x)];
     latlim = [min(y) max(y)];
-    clim = [-40 40];
+    clim = [par.plt_cmin par.plt_cmax];
     
     f = figure();
     f.Position([1 3 4]) = [600 1600 600];

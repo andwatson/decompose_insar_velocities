@@ -23,7 +23,7 @@ resid_vec = residual(~isnan(residual));
 
 lonlim = [min(lon) max(lon)];
 latlim = [min(lat) max(lat)];
-clim = [-10 10];
+clim = [par.plt_cmin par.plt_cmax];
 
 f = figure();
 f.Position([1 3 4]) = [600 1600 1200];

@@ -142,7 +142,7 @@ los_av_desc = mean(vel(:,:,tracks_desc_ind),3,'omitnan');
 % set plotting parameters
 lonlim = [min(x) max(x)];
 latlim = [min(y) max(y)];
-clim = [-10 10];
+clim = [par.plt_cmin par.plt_cmax];
 load('/nfs/see-fs-02_users/eejdm/scripts/cpts/vik/vik.mat')
 
 % reload borders for ease
@@ -215,7 +215,7 @@ for jj = 1:size(los_av_asc,1)
     end
 end
 
-clim = [-10 10];
+clim = [par.plt_cmin par.plt_cmax];
 
 f = figure();
 f.Position([1 3 4]) = [600 1600 600];
